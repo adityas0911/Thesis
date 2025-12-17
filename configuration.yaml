@@ -1,0 +1,52 @@
+train:
+  policy: 'MultiInputPolicy'
+  start_learning_rate: 0.0004
+  end_learning_rate: 0.0001
+  number_steps: 2_000
+  batch_size: 800
+  number_epochs: 8
+  gamma: 0.997
+  generalized_advantage_estimation_lambda: 0.97
+  clip_range: 0.2
+  normalize_advantage: true
+  entropy_coefficient: 0.03
+  value_function_coefficient: 0.5
+  maximum_gradient_norm: 0.5
+  verbose: 1
+  stats_window_size: 100
+  _init_setup_model: true
+  total_timesteps: 1_000_000
+  checkpoint_frequency: 100_000
+environment:
+  seed: 42
+  sensor_alpha: 0.3
+  environment_size: 20
+  vision_range: 2
+  maximum_steps: 400
+reward:
+  step_weight: 1
+  distance_reduction_weight: 10
+  entropy_reduction_weight: 3
+  terminated_weight: 400
+visualization:
+  frames_per_second: 20
+  render_mode: 'human'
+  show_heatmap: true
+  show_victim: true
+  show_path: true
+  window_size: 700
+  render: true
+random:
+  seed: 42
+pomcp:
+  seed: 42
+  number_simulations: 15
+  maximum_depth: 15
+  exploration_constant: 2.0
+  discount_factor: 0.997
+  number_particles: 200
+evaluation:
+  training_episode_percentage: 0.2
+  random: true
+  maskableppo: true
+  pomcp: true

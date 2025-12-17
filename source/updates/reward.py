@@ -1,0 +1,32 @@
+def get_reward(configuration: dict = None,
+               alpha: float = None,
+               normalized_step: float = None,
+               normalized_distance_to_maximum_belief_reduction: float = None,
+               normalized_belief_shannon_entropy_reduction: float = None,
+               terminated: bool = None) -> float:
+  if configuration is None:
+    raise ValueError("Configuration not specified.")
+  if alpha is None:
+    raise ValueError("Alpha not specified.")
+  if normalized_step is None:
+    raise ValueError("Normalized step not specified.")
+  if normalized_distance_to_maximum_belief_reduction is None:
+    raise ValueError("Normalized distance to maximum belief reduction not specified.")
+  if normalized_belief_shannon_entropy_reduction is None:
+    raise ValueError("Normalized belief Shannon entropy reduction not specified.")
+  if terminated is None:
+    raise ValueError("Terminated flag not specified.")
+
+  step_weight: float = configuration['step_weight']
+  distance_reduction_weight: float = configuration['distance_reduction_weight']
+  entropy_reduction_weight: float = configuration['entropy_reduction_weight']
+  terminated_weight: float = configuration['terminated_weight']
+  step_term: float = step_weight * normalized_step
+  distance_term: float = distance_reduction_weight * normalized_distance_to_maximum_belief_reduction
+  belief_term: float = entropy_reduction_weight * normalized_belief_shannon_entropy_reduction
+  reward: float = alpha * (distance_term + belief_term) - (1.0 - alpha) * step_term
+
+  if terminated:
+    reward += terminated_weight
+
+  return reward
