@@ -28,8 +28,7 @@ import numpy as np
 
 from datetime import datetime
 from stable_baselines3.common.callbacks import CallbackList
-from stable_baselines3.common.vec_env import (VecNormalize,
-                                              SubprocVecEnv,
+from stable_baselines3.common.vec_env import (SubprocVecEnv,
 																							DummyVecEnv)
 
 FILE_DIRECTORY: str = os.path.dirname(os.path.abspath(__file__))
@@ -39,8 +38,7 @@ PROJECT_ROOT: str = os.path.dirname(SOURCE_DIRECTORY)
 if PROJECT_ROOT not in sys.path:
 	sys.path.append(PROJECT_ROOT)
 
-from source.agents.train_maskableppo import (make_vectorized_environment,
-                                             get_vector_normalized_environment)
+from source.agents.train_maskableppo import make_vectorized_environment
 from source.utilities.helpers import (detect_optimal_resources,
                                       load_configuration,
 																			get_maximum_training_episode,
@@ -66,11 +64,9 @@ def evaluate_maskableppo(configuration_path: str = None,
 
 	configuration: dict = load_configuration(configuration_path)
 	number_environments: int = resources['number_environments']
-	train_configuration: dict = configuration['train']
 	evaluation_configuration: dict = configuration['evaluation']
-	gamma: float = train_configuration['gamma']
 	training_episode_percentage: float = evaluation_configuration['training_episode_percentage']
-	run_name: str = f'alpha_{alpha:.2f}'
+	run_name: str = f"alpha_{alpha:.2f}"
 	training_data_directory: str = os.path.join(output_directory,
 															 								'training_data')
 	models_directory: str = os.path.join(output_directory,
@@ -139,18 +135,17 @@ def evaluate_maskableppo(configuration_path: str = None,
 	vectorized_environment: SubprocVecEnv | DummyVecEnv = make_vectorized_environment(configuration_path = configuration_path,
 																																										alpha = alpha,
 																																										number_environments = number_environments)
-	vectorized_environment: VecNormalize = get_vector_normalized_environment(vectorized_environment = vectorized_environment,
-                                                                           gamma = gamma)
 
 	print(f"Found existing model at {load_model_path}")
 	print(f"Found existing VecNormalize at {load_vector_normalize_path}")
 	print("Loading MaskablePPO agent...")
 
 	(model,
-   vectorized_environment) = load_maskableppo(load_model_path = load_model_path,
+   vectorized_environment) = load_maskableppo(configuration_path = configuration_path,
+																							load_model_path = load_model_path,
 																							load_vector_normalize_path = load_vector_normalize_path,
 																							vectorized_environment = vectorized_environment,
-																							training_mode = False)
+                       												training = False)
 
 	print(f"Evaluating for {episodes} episodes...")
 	callback.init_callback(model = model)

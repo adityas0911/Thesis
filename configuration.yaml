@@ -1,11 +1,26 @@
 train:
+  clip_observations: 14
+  clip_rewards: 40
+  gamma: 0.997
+  epsilon: 1e-8
   policy: 'MultiInputPolicy'
-  start_learning_rate: 0.0004
-  end_learning_rate: 0.0001
+  features_extractor_arguments:
+    use_coordinate_channels: true
+    add_robot_position_channel: true
+    convolution_channels: [32,
+                           64]
+    global_embedding_dimension: 256
+    scalar_embedding_dimension: 64
+  network_architecture:
+    pi: [256,
+         128]
+    vf: [256,
+         128]
+  start_learning_rate: 4e-4
+  end_learning_rate: 1e-4
   number_steps: 2_000
   batch_size: 800
   number_epochs: 8
-  gamma: 0.997
   generalized_advantage_estimation_lambda: 0.97
   clip_range: 0.2
   normalize_advantage: true
@@ -25,9 +40,9 @@ environment:
   maximum_steps: 400
 reward:
   step_weight: 1
-  distance_reduction_weight: 10
+  distance_reduction_weight: 9
   entropy_reduction_weight: 3
-  terminated_weight: 400
+  terminated_weight: 270
 visualization:
   frames_per_second: 20
   render_mode: 'human'
@@ -36,17 +51,19 @@ visualization:
   show_path: true
   window_size: 700
   render: true
-random:
-  seed: 42
-pomcp:
-  seed: 42
-  number_simulations: 15
-  maximum_depth: 15
-  exploration_constant: 2.0
-  discount_factor: 0.997
-  number_particles: 200
+load_maskableppo:
+  normalize_observations: true
+  normalize_rewards: false
 evaluation:
   training_episode_percentage: 0.2
   random: true
   maskableppo: true
   pomcp: true
+random:
+  seed: 42
+pomcp:
+  seed: 42
+  number_simulations: 20
+  maximum_depth: 20
+  exploration_constant: 2.0
+  number_particles: 200

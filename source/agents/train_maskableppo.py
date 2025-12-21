@@ -44,6 +44,7 @@ if PROJECT_ROOT not in sys.path:
 	sys.path.append(PROJECT_ROOT)
 
 from source.environment.search_rescue_environment import SearchAndRescue
+from source.utilities.features_extractor import FeaturesExtractor
 from source.utilities.helpers import (detect_optimal_resources,
 																			load_configuration,
 																			harmonize_rollout_hyperparameters,
@@ -123,21 +124,30 @@ def make_vectorized_environment(configuration_path: str = None,
 		print(f"Using DummyVecEnv with {number_environments} environments")
 
 	return vectorized_environment
-def get_vector_normalized_environment(vectorized_environment: SubprocVecEnv | DummyVecEnv = None,
-                                      gamma: float = None) -> VecNormalize:
+def get_vector_normalized_environment(configuration_path: str = None,
+                                      vectorized_environment: SubprocVecEnv | DummyVecEnv = None) -> VecNormalize:
+	if configuration_path is None:
+		raise ValueError("Configuration path not specified.")
 	if vectorized_environment is None:
 		raise ValueError("Vectorized environment not specified.")
-	if gamma is None:
-		raise ValueError("Gamma value not specified.")
 
+	configuration: dict = load_configuration(configuration_path = configuration_path)
+	train_configuration: dict = configuration['train']
+	load_maskableppo_configuration: dict = configuration['load_maskableppo']
+	normalize_observations: bool = load_maskableppo_configuration['normalize_observations']
+	normalize_rewards: bool = load_maskableppo_configuration['normalize_rewards']
+	clip_observations: float = train_configuration['clip_observations']
+	clip_rewards: float = train_configuration['clip_rewards']
+	gamma: float = train_configuration['gamma']
+	epsilon: float = train_configuration['epsilon']
 	vectorized_environment: VecNormalize = VecNormalize(venv = vectorized_environment,
 																											training = True,
-																											norm_obs = True,
-																											norm_reward = True,
-																											clip_obs = 10,
-																											clip_reward = 10,
+																											norm_obs = normalize_observations,
+																											norm_reward = normalize_rewards,
+																											clip_obs = clip_observations,
+																											clip_reward = clip_rewards,
 																											gamma = gamma,
-																											epsilon = 1e-8)
+																											epsilon = epsilon)
 
 	return vectorized_environment
 def train_maskableppo(configuration_path: str = None,
@@ -158,6 +168,8 @@ def train_maskableppo(configuration_path: str = None,
 	number_environments: int = resources['number_environments']
 	train_configuration: dict = configuration['train']
 	policy: str = train_configuration['policy']
+	features_extractor_arguments: dict = train_configuration['features_extractor_arguments']
+	network_architecture: dict = train_configuration['network_architecture']
 	start_learning_rate: float = train_configuration['start_learning_rate']
 	end_learning_rate: float = train_configuration['end_learning_rate']
 	number_steps: int = train_configuration['number_steps']
@@ -174,8 +186,8 @@ def train_maskableppo(configuration_path: str = None,
 	stats_window_size: int = train_configuration['stats_window_size']
 	_init_setup_model: bool = train_configuration['_init_setup_model']
 	total_timesteps: int = train_configuration['total_timesteps']
-	checkpoint_frequency: int = train_configuration['checkpoint_frequency']
-	save_frequency: int = checkpoint_frequency / number_environments
+	checkpoint_frequency: float = train_configuration['checkpoint_frequency']
+	save_frequency: float = checkpoint_frequency / float(number_environments)
 	run_name: str = f"alpha_{alpha:.2f}"
 	models_directory: str = os.path.join(output_directory,
 																			 'models',
@@ -267,18 +279,17 @@ def train_maskableppo(configuration_path: str = None,
 	vectorized_environment: SubprocVecEnv | DummyVecEnv = make_vectorized_environment(configuration_path = configuration_path,
 																																										alpha = alpha,
 																																										number_environments = number_environments)
-	vectorized_environment: VecNormalize = get_vector_normalized_environment(vectorized_environment = vectorized_environment,
-                                                                           gamma = gamma)
 
 	if resuming:
 		print(f"Found existing model at {load_model_path}")
 		print(f"Found existing VecNormalize at {load_vector_normalize_path}")
 
 		(model,
-     vectorized_environment) = load_maskableppo(load_model_path = load_model_path,
+     vectorized_environment) = load_maskableppo(configuration_path = configuration_path,
+       																					load_model_path = load_model_path,
 																								load_vector_normalize_path = load_vector_normalize_path,
 																								vectorized_environment = vectorized_environment,
-																								training_mode = True)
+																								training = True)
 
 		print("Loading MaskablePPO agent...")
 		print(f"Resuming training for additional {total_timesteps} timesteps...")
@@ -302,6 +313,11 @@ def train_maskableppo(configuration_path: str = None,
 
 			return learning_rate
 
+		vectorized_environment: VecNormalize = get_vector_normalized_environment(configuration_path = configuration_path,
+																																						 vectorized_environment = vectorized_environment)
+		policy_arguments: dict = dict(features_extractor_class = FeaturesExtractor,
+																	features_extractor_kwargs = features_extractor_arguments,
+																	net_arch = network_architecture)
 		model: MaskablePPO = MaskablePPO(policy = policy,
 																		 env = vectorized_environment,
 																		 learning_rate = learning_rate_schedule,
@@ -315,6 +331,7 @@ def train_maskableppo(configuration_path: str = None,
 																		 ent_coef = entropy_coefficient,
 																		 vf_coef = value_function_coefficient,
 																		 max_grad_norm = maximum_gradient_norm,
+																		 policy_kwargs = policy_arguments,
 																		 verbose = verbose,
 																		 stats_window_size = stats_window_size,
 																		 tensorboard_log = tensorboard_directory,

@@ -340,31 +340,32 @@ def launch_tensorboard(output_directory: str = None,
 		print("Install with: pip install tensorboard")
 	except Exception as exception:
 		print(f"ERROR launching tensorboard: {exception}")
-def load_maskableppo(load_model_path: str = None,
+def load_maskableppo(configuration_path: str = None,
+  									 load_model_path: str = None,
 										 load_vector_normalize_path: str = None,
 										 vectorized_environment: VecNormalize = None,
-										 training_mode: bool = None) -> tuple[MaskablePPO,
-                                                          VecNormalize]:
+           					 training: bool = None) -> tuple[MaskablePPO,
+																										 VecNormalize]:
+	if configuration_path is None:
+		raise ValueError("Configuration path not specified.")
 	if load_model_path is None:
 		raise ValueError("Model path not specified.")
 	if load_vector_normalize_path is None:
 		raise ValueError("VecNormalize path not specified.")
 	if vectorized_environment is None:
 		raise ValueError("Vectorized environment not specified.")
-	if training_mode is None:
+	if training is None:
 		raise ValueError("Training mode not specified.")
 
+	configuration: dict = load_configuration(configuration_path = configuration_path)
+	load_maskableppo_configuration: dict = configuration['load_maskableppo']
+	normalize_observations: bool = load_maskableppo_configuration['normalize_observations']
+	normalize_rewards: bool = load_maskableppo_configuration['normalize_rewards']
 	vectorized_environment = VecNormalize.load(load_path = load_vector_normalize_path,
 																						 venv = vectorized_environment)
-
-	if training_mode:
-		vectorized_environment.training = True
-		vectorized_environment.norm_obs = True
-		vectorized_environment.norm_reward = True
-	else:
-		vectorized_environment.training = False
-		vectorized_environment.norm_obs = True
-		vectorized_environment.norm_reward = False
+	vectorized_environment.training = training
+	vectorized_environment.norm_obs = normalize_observations
+	vectorized_environment.norm_reward = normalize_rewards
 
 	model: MaskablePPO = MaskablePPO.load(path = load_model_path,
 																				env = vectorized_environment)

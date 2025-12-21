@@ -168,14 +168,15 @@ class POMCP:
 		configuration: dict = load_configuration(configuration_path = configuration_path)
 		self.reward_configuration: dict = configuration['reward']
 		environment_configuration: dict = configuration['environment']
+		train_configuration: dict = configuration['train']
 		pomcp_configuration: dict = configuration['pomcp']
 		self.sensor_alpha: float = environment_configuration['sensor_alpha']
 		self.environment_size: int = environment_configuration['environment_size']
 		self.number_simulations: int = pomcp_configuration['number_simulations']
 		self.maximum_depth: int = pomcp_configuration['maximum_depth']
 		self.exploration_constant: float = pomcp_configuration['exploration_constant']
-		self.discount_factor: float = pomcp_configuration['discount_factor']
 		self.number_particles: int = pomcp_configuration['number_particles']
+		self.gamma: float = train_configuration['gamma']
 		self.seed: np.random.Generator = None
 		self.simulator: InternalSimulator = None
 		self.root: TreeNode = None
@@ -429,7 +430,7 @@ class POMCP:
 																	node = child,
 																	steps = steps,
 																	belief = belief)
-		total_reward = reward + self.discount_factor * future_reward
+		total_reward = reward + self.gamma * future_reward
 		node.visit_count += 1
 		node.total_value += total_reward
 
