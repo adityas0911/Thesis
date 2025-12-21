@@ -2,7 +2,7 @@ train:
   clip_observations: 14
   clip_rewards: 40
   gamma: 0.997
-  epsilon: 1e-8
+  epsilon: 1.0e-8
   policy: 'MultiInputPolicy'
   features_extractor_arguments:
     use_coordinate_channels: true
@@ -16,8 +16,8 @@ train:
          128]
     vf: [256,
          128]
-  start_learning_rate: 4e-4
-  end_learning_rate: 1e-4
+  start_learning_rate: 4.0e-4
+  end_learning_rate: 1.0e-4
   number_steps: 2_000
   batch_size: 800
   number_epochs: 8

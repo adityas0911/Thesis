@@ -186,8 +186,8 @@ def train_maskableppo(configuration_path: str = None,
 	stats_window_size: int = train_configuration['stats_window_size']
 	_init_setup_model: bool = train_configuration['_init_setup_model']
 	total_timesteps: int = train_configuration['total_timesteps']
-	checkpoint_frequency: float = train_configuration['checkpoint_frequency']
-	save_frequency: float = checkpoint_frequency / float(number_environments)
+	checkpoint_frequency: int = train_configuration['checkpoint_frequency']
+	save_frequency: int = checkpoint_frequency / number_environments
 	run_name: str = f"alpha_{alpha:.2f}"
 	models_directory: str = os.path.join(output_directory,
 																			 'models',

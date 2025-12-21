@@ -97,7 +97,7 @@ class FeaturesExtractor(BaseFeaturesExtractor):
 																											 nn.Linear(64,
                                       													 scalar_embedding_dimension),
 																											 nn.ReLU())
-    self.features_dim: int = global_embedding_dimension + scalar_embedding_dimension
+    self._features_dim: int = global_embedding_dimension + scalar_embedding_dimension
     self.coordinate_cache: Dict[Tuple[torch.device,
                                       torch.dtype],
                                 torch.Tensor] = {}
