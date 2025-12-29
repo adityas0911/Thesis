@@ -31,14 +31,14 @@ class RandomWrapper:
 		self.number_environments: int = vectorized_environment.num_envs
 		self.actions: np.ndarray = None
 		self.num_timesteps: int = 0
-		self.generators = []
+		self.seeds: list = []
 
 		if seed is None:
 			for _ in range(self.number_environments):
-				self.generators.append(np.random.default_rng(seed = seed))
+				self.seeds.append(np.random.default_rng(seed = seed))
 		else:
 			for environment_number in range(self.number_environments):
-				self.generators.append(np.random.default_rng(seed = seed + environment_number))
+				self.seeds.append(np.random.default_rng(seed = seed + environment_number))
 	def predict(self,
               action_masks: np.ndarray = None):
 		if action_masks is None:
@@ -50,12 +50,12 @@ class RandomWrapper:
 			action_mask: np.ndarray = action_masks[environment_number]
 			valid_actions: list = [index for (index,
                                      		valid) in enumerate(action_mask) if valid]
-			seed = self.generators[environment_number]
-			best_action: int = seed.choice(valid_actions)
+			seed: np.random.Generator = self.seeds[environment_number]
+			action: int = seed.choice(valid_actions)
 
-			actions.append(best_action)
+			actions.append(action)
 
 		self.actions = np.array(actions)
-		self.num_timesteps += 1
+		self.num_timesteps += self.number_environments
 
 		return self.actions

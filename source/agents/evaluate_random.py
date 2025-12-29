@@ -128,7 +128,9 @@ def evaluate_random(configuration_path: str = None,
   _: dict = vectorized_environment.reset()
 
   while episode_callback.episode_count < episodes:
-    action_masks: np.ndarray = vectorized_environment.env_method('action_masks')
+    action_masks: np.ndarray = vectorized_environment.env_method('get_action_mask')
+    action_masks = np.stack(action_masks,
+                            axis = 0)
     actions: np.ndarray = model.predict(action_masks = action_masks)
     (_,
      rewards,

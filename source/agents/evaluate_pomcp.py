@@ -126,17 +126,19 @@ def evaluate_pomcp(configuration_path: str = None,
 
 	while episode_callback.episode_count < episodes:
 		action_masks: np.ndarray = vectorized_environment.env_method('get_action_mask')
+		action_masks = np.stack(action_masks,
+                            axis = 0)
 		actions: np.ndarray = model.predict(observations = observations,
                                         action_masks = action_masks)
 		(observations,
 		 rewards,
-		 _,
+		 dones,
 		 informations) = vectorized_environment.step(actions = actions)
 
-		for (environment_number,
-				 information) in enumerate(informations):
-			if information['success'] or information['failure']:
-				model.reset_environment(environment_number = environment_number)
+		model.step(dones = dones,
+							 observations = observations,
+        			 informations = informations)
+
 		for callback_instance in callback.callbacks:
 			callback_instance.locals = {'infos': informations,
 																	'actions': actions,

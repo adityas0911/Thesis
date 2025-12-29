@@ -46,7 +46,7 @@ from source.utilities.helpers import (detect_optimal_resources,
 
 def evaluate_single_agent(configuration_path: str = None,
 													output_directory: str = None,
-													agent_label: str = None,
+													agent_type: str = None,
 													alpha: float = None,
 													resources: dict = None) -> tuple[str,
 																													 bool,
@@ -55,33 +55,37 @@ def evaluate_single_agent(configuration_path: str = None,
 		raise ValueError("Configuration path not specified.")
 	if output_directory is None:
 		raise ValueError("Output directory not specified.")
-	if agent_label is None:
-		raise ValueError("Agent label not specified.")
+	if agent_type is None:
+		raise ValueError("Agent type not specified.")
 	if alpha is None:
 		raise ValueError("Alpha not specified.")
 	if resources is None:
 		raise ValueError("Resources not specified.")
+
+	agent_label: str = f"Agent {agent_type} Alpha {alpha:.2f}"
 
 	print(f"\n[{agent_label}] Starting evaluation...")
 
 	start_time: float = time.time()
 
 	try:
-		if agent_label.startswith('random'):
+		if agent_type == 'random':
 			evaluate_random(configuration_path = configuration_path,
 											output_directory = output_directory,
 											alpha = alpha,
 											resources = resources)
-		if agent_label.startswith('maskableppo'):
+		elif agent_type == 'maskableppo':
 			evaluate_maskableppo(configuration_path = configuration_path,
 													 output_directory = output_directory,
 													 alpha = alpha,
 													 resources = resources)
-		if agent_label.startswith('pomcp'):
+		elif agent_type == 'pomcp':
 			evaluate_pomcp(configuration_path = configuration_path,
 										 output_directory = output_directory,
 										 alpha = alpha,
 										 resources = resources)
+		else:
+			raise ValueError(f"Unknown agent type: {agent_type}")
 
 		elapsed_time: float = time.time() - start_time
 
@@ -112,38 +116,16 @@ def evaluate_all_agents(configuration_path: str = None,
 	if agent_types is None:
 		raise ValueError("Agent types not specified.")
 
-	evaluation_arguments: list[tuple[str,
-																	 str,
-																	 str,
-																	 float,
-																	 dict]] = []
+	agent_types: list[str] = [agent_type for (agent_type,
+																						enabled) in agent_types.items() if enabled]
+	number_agents: int = len(agent_types) * len(alphas)
+	number_alphas: int = len(alphas)
+	resources: dict = detect_optimal_resources(number_parallel = number_agents)
+	maximum_workers: int = resources['maximum_workers']
+	number_environments: int = resources['number_environments']
 	results: dict[str,
                 tuple[bool,
                       float]] = {}
-	agent_counts: list[str] = []
-	number_agents: int = 0
-
-	for (agent_type,
-       enabled) in agent_types.items():
-		if enabled:
-			count: int = len(alphas)
-			number_agents += count
-
-			agent_counts.append(f"{count} {agent_type.capitalize()} agent(s)")
-
-			for alpha in alphas:
-				agent_label = f"{agent_type} (alpha = {alpha:.2f})"
-
-				evaluation_arguments.append((configuration_path,
-																		 output_directory,
-																		 agent_label,
-																		 alpha,
-																		 None))
-
-	resources: dict = detect_optimal_resources(number_parallel = number_agents)
-	maximum_workers: int = resources['maximum_workers']
-	agents: str = " and ".join(agent_counts)
-	evaluation_arguments = [evaluation_argument[:-1] + (resources,) for evaluation_argument in evaluation_arguments]
 
 	print("=" * 80)
 	print("AUTO-DETECTED SYSTEM RESOURCES")
@@ -159,49 +141,44 @@ def evaluate_all_agents(configuration_path: str = None,
 	print(f" - Device: {resources['device']}")
 	print("=" * 80 + "\n")
 
-	if resources['maximum_workers'] > 1:
+	if maximum_workers > 1:
 		print("PARALLEL EVALUATION MODE")
-		print(f"Evaluating {agents} with {resources['maximum_workers']} parallel workers")
-		print(f"Each agent will use {resources['number_environments']} vectorized environments")
-		print(f"Total CPU utilization: {resources['maximum_workers'] * resources['number_environments']} cores")
-		print("=" * 80 + "\n")
-
-		start_time: float = time.time()
-
-		with ProcessPoolExecutor(max_workers = maximum_workers) as executor:
-			futures = {executor.submit(evaluate_single_agent,
-                              	 *arguments): arguments[2] for arguments in evaluation_arguments}
-
-			for future in as_completed(futures):
-				(agent_label,
-         success,
-         elapsed_time) = future.result()
-				results[agent_label] = (success,
-                            		elapsed_time)
-
-		total_time: float = time.time() - start_time
 	else:
 		print("SEQUENTIAL EVALUATION MODE")
-		print(f"Evaluating {agents} with {maximum_workers} sequential worker(s)")
-		print(f"Each agent will use {resources['number_environments']} vectorized environment(s)")
-		print(f"Total CPU utilization: {maximum_workers * resources['number_environments']} cores")
-		print("=" * 80 + "\n")
 
-		start_time: float = time.time()
+	print(f"Evaluating {number_agents} agents each with {number_alphas} alphas with {maximum_workers} workers")
+	print(f"Each alpha will use {number_environments} vectorized environments")
+	print(f"Total CPU utilization: {maximum_workers * number_environments} cores")
+	print("=" * 80 + "\n")
 
-		for arguments in evaluation_arguments:
+	start_time: float = time.time()
+
+	with ProcessPoolExecutor(max_workers = maximum_workers) as executor:
+		evaluation_arguments: list[tuple[str,
+																		 str,
+																		 str,
+																		 float,
+																		 dict]] = [(configuration_path,
+																								output_directory,
+																								agent_type,
+																								alpha,
+																								resources) for alpha in alphas for agent_type in agent_types]
+		futures = {executor.submit(evaluate_single_agent,
+															 *arguments): (arguments[2],
+																				 		 arguments[3]) for arguments in evaluation_arguments}
+
+		for future in as_completed(futures):
 			(agent_label,
-    	 success,
-       elapsed_time) = evaluate_single_agent(*arguments)
+			 success,
+			 elapsed_time) = future.result()
 			results[agent_label] = (success,
-                           		elapsed_time)
+															elapsed_time)
 
-		total_time: float = time.time() - start_time
-
+	total_time: float = time.time() - start_time
 	successful: int = sum(1 for (success,
-																_) in results.values() if success)
+															 _) in results.values() if success)
 	total_evaluation_time: float = sum(elapsed_time for (_,
-																												elapsed_time) in results.values())
+																											 elapsed_time) in results.values())
 
 	print("\n" + "=" * 80)
 	print("EVALUATION SUMMARY")
@@ -210,7 +187,7 @@ def evaluate_all_agents(configuration_path: str = None,
 	print(f"Total wall time: {total_time:.2f}s ({total_time / 60:.2f} min)")
 	print(f"Total evaluation time: {total_evaluation_time:.2f}s ({total_evaluation_time / 60:.2f} min)")
 
-	if resources['maximum_workers'] > 1:
+	if maximum_workers > 1:
 		print(f"Speed-up factor: {total_evaluation_time / total_time:.2f}x")
 
 	print("\nPer-agent results:")

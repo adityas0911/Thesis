@@ -7,24 +7,24 @@ train:
   features_extractor_arguments:
     use_coordinate_channels: true
     add_robot_position_channel: true
-    convolution_channels: [32,
-                           64]
-    global_embedding_dimension: 256
-    scalar_embedding_dimension: 64
+    convolution_channels: [16,
+                           32]
+    global_embedding_dimension: 128
+    scalar_embedding_dimension: 32
   network_architecture:
     pi: [256,
          128]
     vf: [256,
          128]
   start_learning_rate: 4.0e-4
-  end_learning_rate: 1.0e-4
-  number_steps: 2_000
-  batch_size: 800
-  number_epochs: 8
+  end_learning_rate: 2.0e-4
+  number_steps: 500
+  batch_size: 250
+  number_epochs: 10
   generalized_advantage_estimation_lambda: 0.97
   clip_range: 0.2
   normalize_advantage: true
-  entropy_coefficient: 0.03
+  entropy_coefficient: 0.01
   value_function_coefficient: 0.5
   maximum_gradient_norm: 0.5
   verbose: 1
@@ -33,7 +33,7 @@ train:
   total_timesteps: 1_000_000
   checkpoint_frequency: 100_000
 environment:
-  seed: 42
+  seed: null
   sensor_alpha: 0.3
   environment_size: 20
   vision_range: 2
@@ -58,11 +58,11 @@ evaluation:
   training_episode_percentage: 0.2
   random: true
   maskableppo: true
-  pomcp: true
+  pomcp: false
 random:
-  seed: 42
+  seed: null
 pomcp:
-  seed: 42
+  seed: null
   number_simulations: 20
   maximum_depth: 20
   exploration_constant: 2.0

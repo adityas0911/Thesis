@@ -57,7 +57,9 @@ def train_single_alpha(configuration_path: str = None,
 	if resources is None:
 		raise ValueError("Resources not specified.")
 
-	print(f"\n[Alpha {alpha:.2f}] Starting training...")
+	alpha_label: str = f"Alpha {alpha:.2f}"
+
+	print(f"\n[{alpha_label}] Starting training...")
 
 	start_time: float = time.time()
 
@@ -69,9 +71,9 @@ def train_single_alpha(configuration_path: str = None,
 
 		elapsed_time: float = time.time() - start_time
 	
-		print(f"[Alpha {alpha:.2f}] Complete in {elapsed_time:.2f}s ({elapsed_time / 60:.2f} min)!")
+		print(f"[{alpha_label}] Complete in {elapsed_time:.2f}s ({elapsed_time / 60:.2f} min)!")
 
-		return (alpha,
+		return (alpha_label,
             True,
             elapsed_time)
 	except Exception as exception:
@@ -80,7 +82,7 @@ def train_single_alpha(configuration_path: str = None,
 		print(f"[Alpha {alpha:.2f}] Failed after {elapsed_time:.2f}s: {exception}")
 		traceback.print_exc()
 
-		return (alpha,
+		return (alpha_label,
 						False,
 						elapsed_time)
 def train_all_alphas(configuration_path: str = None,
@@ -95,6 +97,8 @@ def train_all_alphas(configuration_path: str = None,
 
 	number_alphas: int = len(alphas)
 	resources: dict = detect_optimal_resources(number_parallel = number_alphas)
+	maximum_workers: int = resources['maximum_workers']
+	number_environments: int = resources['number_environments']
 	results: dict[float,
 								tuple[bool,
 											float]] = {}
@@ -113,13 +117,19 @@ def train_all_alphas(configuration_path: str = None,
 	print(f" - Device: {resources['device']}")
 	print("=" * 80 + "\n")
 
-	if resources['maximum_workers'] > 1:
+	if maximum_workers > 1:
 		print("PARALLEL TRAINING MODE")
-		print(f"Training {number_alphas} alphas with {resources['maximum_workers']} parallel workers")
-		print(f"Each alpha will use {resources['number_environments']} vectorized environments")
-		print(f"Total CPU utilization: {resources['maximum_workers'] * resources['number_environments']} cores")
-		print("=" * 80 + "\n")
+	else:
+		print("SEQUENTIAL TRAINING MODE")
 
+	print(f"Training {number_alphas} alphas with {maximum_workers} workers")
+	print(f"Each alpha will use {number_environments} vectorized environments")
+	print(f"Total CPU utilization: {maximum_workers * number_environments} cores")
+	print("=" * 80 + "\n")
+
+	start_time: float = time.time()
+
+	with ProcessPoolExecutor(max_workers = maximum_workers) as executor:
 		train_arguments: list[tuple[str,
 																str,
 																float,
@@ -127,72 +137,40 @@ def train_all_alphas(configuration_path: str = None,
 																					 output_directory,
 																					 alpha,
 																					 resources) for alpha in alphas]
-		start_time: float = time.time()
+		futures: dict = {executor.submit(train_single_alpha,
+																		 *arguments): arguments[2] for arguments in train_arguments}
 
-		with ProcessPoolExecutor(max_workers = resources['maximum_workers']) as executor:
-			futures: dict = {executor.submit(train_single_alpha,
-                                 			 *arguments): arguments[2] for arguments in train_arguments}
+		for future in as_completed(futures):
+			(alpha_label,
+			 success,
+			 elapsed_time) = future.result()
+			results[alpha_label] = (success,
+															elapsed_time)
 
-			for future in as_completed(futures):
-				(alpha,
-         success,
-         elapsed_time) = future.result()
-				results[alpha] = (success,
-                          elapsed_time)
+	total_time: float = time.time() - start_time
+	successful: int = sum(1 for (success,
+															 _) in results.values() if success)
+	total_training_time: float = sum(elapsed_time for (_,
+																										 elapsed_time) in results.values())
 
-		total_time: float = time.time() - start_time
-		successful: int = sum(1 for (success,
-                                 _) in results.values() if success)
-		total_training_time: float = sum(elapsed_time for (_,
-                                                  		 elapsed_time) in results.values())
+	print("\n" + "=" * 80)
+	print("TRAINING SUMMARY")
+	print("=" * 80)
+	print(f"Successful: {successful}/{number_alphas} ({successful / number_alphas * 100:.2f}%)")
+	print(f"Total wall time: {total_time:.2f}s ({total_time / 60:.2f} min)")
+	print(f"Total training time: {total_training_time:.2f}s ({total_training_time / 60:.2f} min)")
 
-		print("\n" + "=" * 80)
-		print("TRAINING SUMMARY")
-		print("=" * 80)
-		print(f"Successful: {successful}/{number_alphas} ({successful / number_alphas * 100:.2f}%)")
-		print(f"Total wall time: {total_time:.2f}s ({total_time / 60:.2f} min)")
-		print(f"Total training time: {total_training_time:.2f}s ({total_training_time / 60:.2f} min)")
+	if maximum_workers > 1:
 		print(f"Speed-up factor: {total_training_time / total_time:.2f}x")
-	else:
-		print("SEQUENTIAL TRAINING MODE")
-		print(f"Training {number_alphas} alphas with {resources['maximum_workers']} sequential workers")
-		print(f"Each alpha will use {resources['number_environments']} vectorized environments")
-		print(f"Total CPU utilization: {resources['maximum_workers'] * resources['number_environments']} cores")
-		print("=" * 80 + "\n")
-
-		start_time: float = time.time()
-
-		for alpha in alphas:
-			(alpha,
-       success,
-       elapsed_time) = train_single_alpha(configuration_path = configuration_path,
-																					output_directory = output_directory,
-																					alpha = alpha,
-																					resources = resources)
-			results[alpha] = (success,
-                        elapsed_time)
-
-		total_time: float = time.time() - start_time
-		successful: int = sum(1 for (success,
-																 _) in results.values() if success)
-		total_training_time: float = sum(elapsed_time for (_,
-																											 elapsed_time) in results.values())
-
-		print("\n" + "=" * 80)
-		print("TRAINING SUMMARY")
-		print("=" * 80)
-		print(f"Successful: {successful}/{number_alphas} ({successful / number_alphas * 100:.2f}%)")
-		print(f"Total wall time: {total_time:.2f}s ({total_time / 60:.2f} min)")
-		print(f"Total training time: {total_training_time:.2f}s ({total_training_time / 60:.2f} min)")
 
 	print("\nPer-alpha results:")
 
-	for alpha in sorted(results.keys()):
+	for alpha_label in sorted(results.keys()):
 		(success,
-		 elapsed_time) = results[alpha]
+		 elapsed_time) = results[alpha_label]
 		status: str = "success" if success else "failure"
 
-		print(f"  [{status}] Alpha {alpha:.2f}: {elapsed_time:.2f}s ({elapsed_time / 60:.2f} min)")
+		print(f"  [{status}] {alpha_label}: {elapsed_time:.2f}s ({elapsed_time / 60:.2f} min)")
 
 	print("=" * 80)
 

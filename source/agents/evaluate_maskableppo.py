@@ -153,7 +153,9 @@ def evaluate_maskableppo(configuration_path: str = None,
 	observations: dict = vectorized_environment.reset()
 
 	while episode_callback.episode_count < episodes:
-		action_masks: np.ndarray = vectorized_environment.venv.env_method('action_masks')
+		action_masks: np.ndarray = vectorized_environment.env_method('get_action_mask')
+		action_masks = np.stack(action_masks,
+														axis = 0)
 		(actions,
      _) = model.predict(observation = observations,
                         deterministic = True,
