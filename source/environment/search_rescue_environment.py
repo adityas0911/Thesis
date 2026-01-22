@@ -336,7 +336,8 @@ class SearchAndRescue(gym.Env):
 															 normalized_step = normalized_step,
 															 normalized_distance_to_maximum_belief_reduction = normalized_distance_to_maximum_belief_reduction,
 															 normalized_belief_shannon_entropy_reduction = normalized_belief_shannon_entropy_reduction,
-															 terminated = self.terminated)
+															 terminated = self.terminated,
+															 truncated = self.truncated)
 		self.information = self.get_information()
 
 		if self._render:
