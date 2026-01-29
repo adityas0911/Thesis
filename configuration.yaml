@@ -5,33 +5,18 @@ train:
   epsilon: 1.0e-8
   policy: 'MultiInputPolicy'
   features_extractor_arguments:
-    global_convolution_channels: [32,
-                                  64,
-                                  64]
-    global_convolution_kernel_sizes: [3,
-                                      3,
-                                      3]
-    global_convolution_strides: [1,
-                                 2,
-                                 2]
-    global_embedding_dimension: 256
-    global_input_channels: 8
-    local_convolution_channels: [16,
-                                 32]
-    local_convolution_kernel_sizes: [3,
-                                     3]
-    local_convolution_strides: [1,
-                                1]
-    local_embedding_dimension: 64
-    scalar_keys: ['robot_position',
-                  'distance_to_maximum_belief',
-                  'distance_to_maximum_belief_reduction',
-                  'belief_shannon_entropy',
-                  'belief_shannon_entropy_reduction']
-    scalar_hidden_sizes: [64,
-                          64]
-    scalar_embedding_dimension: 64
-    group_count: 8
+    cnn_channels: [32,
+                   64,
+                   64]
+    cnn_kernel_sizes: [3,
+                       3,
+                       3]
+    cnn_strides: [1,
+                  2,
+                  2]
+    cnn_embedding_dimensions: 256
+    scalar_hidden_sizes: [64]
+    scalar_embedding_dimensions: 64
   network_architecture:
     pi: [256,
          128]

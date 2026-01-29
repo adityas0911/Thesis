@@ -143,44 +143,20 @@ class SearchAndRescue(gym.Env):
 																						self.environment_size),
 																					 dtype = np.float32)
 		self.action_space: spaces.Discrete = spaces.Discrete(5)
-		self.observation_space: spaces.Dict = spaces.Dict({'robot_position': spaces.Box(low = 0,
-                                                                                  	high = self.environment_size - 1,
-                                                                                    shape = (2,),
-                                                                                    dtype = np.int8),
-																											 'local_vision': spaces.Box(low = 0,
-                                                       														high = 1,
-                                                       														shape = (vision_size,
-                                                                              						 vision_size,
-                                                                                     			 1),
-                                                       														dtype = np.int8),
-																											 'environment_knowledge': spaces.Box(low = -1,
-                                                                													 high = 1,
-                                                                              						 shape = (self.environment_size,
-                                                                                              			self.environment_size,
-                                                                                                 		1),
-                                                                                     			 dtype = np.int8),
-																											 'belief': spaces.Box(low = 0,
-                                                 														high = 1,
-                                                               							shape = (self.environment_size,
-                                                                               			 self.environment_size,
-                                                                                   	 1),
-                                                                      			dtype = np.float32),
-																											 'distance_to_maximum_belief': spaces.Box(low = 0,
-																																																high = 2 * (self.environment_size - 1),
-																																																shape = (1,),
-																																																dtype = np.float32),
-																											 'distance_to_maximum_belief_reduction': spaces.Box(low = -2 * (self.environment_size - 1),
-																																																					high = 2 * (self.environment_size - 1),
-																																																					shape = (1,),
-																																																					dtype = np.float32),
-																											 'belief_shannon_entropy': spaces.Box(low = 0.0,
-																																														high = np.finfo(np.float32).max,
-																																														shape = (1,),
-																																														dtype = np.float32),
-																											 'belief_shannon_entropy_reduction': spaces.Box(low = -np.finfo(np.float32).max,
-																																																			high = np.finfo(np.float32).max,
-																																																			shape = (1,),
-																																																			dtype = np.float32)})
+		self.observation_space = spaces.Dict({'global_map': spaces.Box(low = 0.0,
+																																	 high = 1.0,
+																																	 shape = (self.environment_size,
+																																						self.environment_size,
+																																						3),
+																																	 dtype = np.float32),
+																					'belief_shannon_entropy': spaces.Box(low = 0.0,
+																																							 high = np.finfo(np.float32).max,
+																																							 shape = (1,),
+																																							 dtype = np.float32),
+																					'distance_to_maximum_belief': spaces.Box(low = 0.0,
+																																									 high = 2 * (self.environment_size - 1),
+																																									 shape = (1,),
+																																									 dtype = np.float32)})
 		self.steps: int = -1
 		self.total_moves: int = -1
 		self.total_senses: int = -1
@@ -397,23 +373,27 @@ class SearchAndRescue(gym.Env):
 								self.robot_position[1]] = 0.0
 
 		self.belief = normalize_belief(belief = self.belief)
+	def get_robot_map(self) -> np.ndarray:
+		robot_map: np.ndarray = np.zeros((self.environment_size, 
+																			self.environment_size),
+																		 dtype = np.float32)
+		robot_map[self.robot_position[0],
+          		self.robot_position[1]] = 1.0
+
+		return robot_map
 	def get_observation(self) -> dict:
-		self.observation = {'robot_position': np.array(self.robot_position,
-																								 	 dtype = np.int8),
-    										'local_vision': np.expand_dims(self.local_vision,
-                                                       axis = -1),
-												'environment_knowledge': np.expand_dims(self.environment_knowledge,
-																																axis = -1),
-												'belief': np.expand_dims(self.belief,
-																								 axis = -1),
-            						'distance_to_maximum_belief': np.array([self.distance_to_maximum_belief],
-                                                         			 dtype = np.float32),
-												'distance_to_maximum_belief_reduction': np.array([self.distance_to_maximum_belief_reduction],
-                                                             						 dtype = np.float32),
-            						'belief_shannon_entropy': np.array([self.belief_shannon_entropy],
-                                                     			 dtype = np.float32),
-												'belief_shannon_entropy_reduction': np.array([self.belief_shannon_entropy_reduction],
-                                                         						 dtype = np.float32)}
+		environment_map = (self.environment_knowledge == 0).astype(np.float32)
+		belief_map = self.belief.astype(np.float32)
+		robot_map = self.get_robot_map()
+		global_map = np.stack([environment_map,
+													 belief_map,
+                           robot_map],
+													axis = -1)
+		self.observation = {'global_map': global_map,
+												'belief_shannon_entropy': np.array([self.belief_shannon_entropy],
+																													 dtype = np.float32),
+												'distance_to_maximum_belief': np.array([self.distance_to_maximum_belief],
+																															 dtype = np.float32)}
 
 		return self.observation
 	def get_information(self) -> dict:
@@ -431,10 +411,10 @@ class SearchAndRescue(gym.Env):
 												'total_senses': self.total_senses,
 												'initial_distance_to_victim': self.initial_distance_to_victim,
 												'distance_to_maximum_belief': self.observation['distance_to_maximum_belief'].item(),
-												'distance_to_maximum_belief_reduction': self.observation['distance_to_maximum_belief_reduction'].item(),
+												'distance_to_maximum_belief_reduction': self.distance_to_maximum_belief_reduction,
 												'initial_belief_shannon_entropy': self.initial_belief_shannon_entropy,
 												'belief_shannon_entropy': self.observation['belief_shannon_entropy'].item(),
-												'belief_shannon_entropy_reduction': self.observation['belief_shannon_entropy_reduction'].item(),
+												'belief_shannon_entropy_reduction': self.belief_shannon_entropy_reduction,
 												'success': success,
 												'failure': failure}
 
@@ -608,7 +588,7 @@ class SearchAndRescue(gym.Env):
 			raise NotImplementedError
 	def get_action_mask(self) -> np.ndarray:
 		action_mask: np.ndarray = np.zeros(5,
-                                    	 dtype = np.int8)
+                                    	 dtype = np.bool_)
 		self.open_cells_knowledge: list = get_cells(environment = self.environment_knowledge,
 																								type = 'open')
 
