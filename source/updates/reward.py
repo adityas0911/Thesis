@@ -3,7 +3,8 @@ def get_reward(configuration: dict = None,
                normalized_step: float = None,
                normalized_distance_to_maximum_belief_reduction: float = None,
                normalized_belief_shannon_entropy_reduction: float = None,
-               terminated: bool = None) -> float:
+               terminated: bool = None,
+               truncated: bool = None) -> float:
   if configuration is None:
     raise ValueError("Configuration not specified.")
   if alpha is None:
@@ -21,12 +22,18 @@ def get_reward(configuration: dict = None,
   distance_reduction_weight: float = configuration['distance_reduction_weight']
   entropy_reduction_weight: float = configuration['entropy_reduction_weight']
   terminated_weight: float = configuration['terminated_weight']
+  truncated_weight: float = configuration['truncated_weight']
   step_term: float = step_weight * normalized_step
   distance_term: float = distance_reduction_weight * normalized_distance_to_maximum_belief_reduction
   belief_term: float = entropy_reduction_weight * normalized_belief_shannon_entropy_reduction
-  reward: float = alpha * (distance_term + belief_term) - (1.0 - alpha) * step_term
+  sparse_reward: float = -step_term
 
   if terminated:
-    reward += terminated_weight
+    sparse_reward += terminated_weight
+  if truncated:
+    sparse_reward -= truncated_weight
+
+  shaped_reward: float = alpha * distance_term + (1 - alpha) * belief_term
+  reward: float = sparse_reward + shaped_reward
 
   return reward

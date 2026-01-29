@@ -2,45 +2,96 @@
 
 ## Research Motivation and Problem Statement
 
-This repository presents a novel, reproducible benchmark and comparative study for search and rescue (SAR) in procedurally generated, unknown maze environments under partial observability. The agent must rescue a stochastically moving victim using only local vision and a noisy proximity sensor, with no prior map information. The environment is designed to be challenging: the agent faces uncertainty in both the map and sensor, must actively choose when to sense, and must balance exploration and exploitation to succeed.
+This repository presents a reproducible benchmark for **search-and-rescue (SAR) under partial observability** in procedurally generated maze environments. An agent must locate and rescue a **stochastically moving victim** using only **local vision** and a **noisy proximity sensor**, with **no prior map information**.
 
-**Key Research Gap:**
+The problem is formulated as a **POMDP** in which the agent must actively decide **when to sense** and **how to move**, balancing exploration, information gathering, and exploitation under uncertainty.
 
-Despite extensive literature in POMDP planning, active sensing, and deep RL, most prior work assumes static or known maps, perfect sensors, stationary or fully observable targets, or lacks procedural map generation. This project introduces a realistic SAR benchmark and evaluates three fundamentally different approaches:
+The environment is intentionally challenging:
 
-- **Belief-Based Planning:** Bayesian planning in belief space, leveraging particle filters and active sensing ([Silver & Veness, 2010](https://papers.nips.cc/paper/2010/hash/2ce16b5b9d0f3c5f.pdf)).
-- **Masked Deep RL:** Policy-based learning with dynamic action masking, enabling agents to learn valid actions under uncertainty ([SB3-Contrib, 2021](https://github.com/Stable-Baselines-Team/stable-baselines3-contrib)).
-- **Random Agent Baseline:** A random action agent with valid action masking, providing a lower-bound baseline for performance comparison and sanity checks.
+- The map is unknown and procedurally generated
+- The victim moves stochastically
+- Sensors are noisy and probabilistic
+- Valid actions change dynamically
+- Full observability is never achieved
 
-No prior work has systematically compared belief-based planning, masked deep RL, and a random agent baseline in environments with:
+---
 
-- Unknown, procedurally generated mazes
-- No prior map information
-- Noisy, probabilistic proximity sensors
-- Moving, stochastic targets
-- Partial observability and dynamic action validity
+## Key Research Gap
+
+While prior work has explored POMDP planning, deep RL under partial observability, and active sensing, most existing benchmarks assume one or more simplifying conditions:
+
+- Known or static maps
+- Stationary targets
+- Perfect sensors
+- Fully observable state representations
+- No procedural generation
+
+This project introduces a **unified SAR benchmark** and directly compares three fundamentally different approaches under the *same* environment, reward structure, and uncertainty assumptions:
+
+- **Belief-Based Planning:** POMCP-style Monte Carlo Tree Search in belief space  
+- **Masked Deep RL:** PPO with dynamic action masking and belief-augmented observations  
+- **Masked Random Policy:** Valid-action random baseline  
+
+---
 
 ## Overview
 
-This benchmark enables systematic comparison of three agent types:
+The benchmark evaluates three agent classes:
 
 - **POMCP (Partially Observable Monte Carlo Planning)**
-- **MaskablePPO (Policy-based RL with action masking)**
-- **Random agent baseline**
+- **MaskablePPO (policy-gradient RL with action masking)**
+- **Masked Random Agent**
 
-The environment simulates a realistic SAR scenario: an agent must find and rescue a moving victim using only local vision and a noisy proximity sensor, with no prior map knowledge.
+All agents interact with the **same SAR environment**, share the same belief updates and reward structure, and are evaluated under identical seeds and configurations.
 
-## Key Features, Contributions, and Novelty
+---
 
-- **Benchmark Environment:** Realistic SAR scenario for pursuit-evasion under partial observability, featuring procedural maze generation, noisy sensors, and moving targets.
-- **Comparative Analysis:** Systematic evaluation of POMCP, MaskablePPO, and a Random agent baseline in the same environment, with reproducible experiments and seeded runs.
-- **Reward Shaping:** Explicit alpha tradeoff $\alpha \cdot \text{progress} - (1 - \alpha) \cdot \text{cost}$, combining entropy/information-gain and distance reduction with step cost.
-- **Failure Modes:** Identification of strengths and weaknesses of model-based (belief-space) and model-free (policy-based) approaches.
-- **Open-Source Code:** Modular implementation for reproducibility and extension, including evaluation scripts, plotting, and CSV/Tensorboard outputs.
-- **Claims and Novelty:**
-  - This work directly compares a POMCP-like planner, MaskablePPO (with action masking), and a Random agent baseline in SAR victim search, using entropy/information-gain rewards and explicit alpha tradeoff, within a procedural maze and noisy proximity sensor setting.
-  - The integrated combination (procedural maze, moving victim, noisy proximity sensor, Bayesian belief, MaskablePPO vs POMCP vs Random agent) is distinctive and not commonly documented as a reproducible benchmark. Prior works address only subsets of these challenges ([Silver & Veness, 2010](https://papers.nips.cc/paper/2010/hash/2ce16b5b9d0f3c5f.pdf); [Bourgault et al., 2002]; [Hausknecht & Stone, 2015]; [Hsu et al., 2022]).
-  - Provides a new testbed for evaluating planning, deep RL, and random baselines in realistic SAR settings, exposing strengths and limitations of each approach.
+## Observation and Action Model
+
+### Observation Space (PPO / Random Agents)
+
+MaskablePPO and the random baseline receive a **belief-augmented observation**, not the true state.
+
+**Observation is a `Dict` consisting of:**
+
+1. **Global Map Tensor** `(H × W × C)`
+   - Known free vs. blocked cells
+   - Current belief distribution over victim location
+   - Robot position
+
+2. **Scalar Belief Statistics**
+   - Shannon entropy of the belief
+   - Distance to maximum-belief cell
+
+Local vision and proximity sensing are used **internally** to update belief and are **not directly exposed** to the policy.
+
+---
+
+### Action Space
+
+Discrete actions:
+
+- `SENSE`
+- `UP`, `DOWN`, `LEFT`, `RIGHT`
+
+### Dynamic Action Masking
+
+- Invalid movement actions (walls, unknown cells) are masked
+- Sensing is always valid
+- Masking depends on current map knowledge
+- Implemented using **MaskablePPO (SB3-Contrib)**
+
+---
+
+## Key Features and Contributions
+
+- Realistic SAR benchmark with procedural generation
+- Explicit belief tracking and entropy metrics
+- Direct comparison of planning vs learning
+- Dynamic action masking
+- Reproducible experiments and logging
+
+---
 
 ## Project Structure
 
@@ -50,10 +101,7 @@ The environment simulates a realistic SAR scenario: an agent must find and rescu
 ├── requirements.txt          # Python dependencies
 ├── README.md                 # This file
 ├── scripts/                  # Batch scripts for training/evaluation
-│   ├── train_all_alphas.py
-│   ├── evaluate_all_agents.py
-│   └── __init__.py
-├── source/
+├── source/                   # Core codebase
 │   ├── agents/               # Agent implementations and evaluation scripts
 │   ├── environment/          # Maze generation, SAR environment, sensor models
 │   ├── updates/              # Belief update, reward, sensor logic
@@ -68,7 +116,9 @@ The environment simulates a realistic SAR scenario: an agent must find and rescu
     └── vector_normalize/     # Normalization stats
 ```
 
-## How the Codebase Works
+---
+
+## How the Codebase Fits Together
 
 - **Environment:**
 
@@ -106,7 +156,9 @@ Controls all major experiment settings:
 
 **Edit `configuration.yaml` to change experiment settings.**
 
-## Workflow: Running Experiments
+---
+
+## Running Experiments
 
 1. **Install dependencies:**
 
@@ -135,7 +187,7 @@ Controls all major experiment settings:
    - Use CSV logs and plots in `results/` to compare performance.
    - Tensorboard logs in `results/tensorboard/` for MaskablePPO.
 
-## How Everything Syncs
+---
 
 ## Literature Context and Citations
 
@@ -198,6 +250,8 @@ This benchmark is grounded in and extends the following research areas:
 - Butler et al. (2000), "Benchmarking Active Search in Grid Environments". [ICRA](https://doi.org/10.1109/ROBOT.2000.844106)
 
 ---
+
+## Design Principles
 
 - **Scripts** in `scripts/` are the main entry points, using `configuration.yaml` and calling into `source/` modules.
 - **Agents** are modular and share the same environment and reward structure.
