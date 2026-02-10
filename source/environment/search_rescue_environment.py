@@ -27,7 +27,6 @@ import pygame
 
 import numpy as np
 import gymnasium as gym
-import multiprocessing as mp
 
 from gymnasium import spaces
 
@@ -114,12 +113,7 @@ class SearchAndRescue(gym.Env):
 		self.show_victim: bool = visualization_configuration['show_victim']
 		self.show_path: bool = visualization_configuration['show_path']
 		self.window_size: int = visualization_configuration['window_size']
-
-		if mp.current_process().name != 'MainProcess':
-			self._render: bool = False
-		else:
-			self._render: bool = visualization_configuration['render']
-
+		self._render: bool = visualization_configuration['render']
 		self.cell_size: int = self.window_size // self.environment_size
 		self.environment: np.ndarray = -1 * np.ones((self.environment_size,
 																								 self.environment_size),
@@ -425,10 +419,10 @@ class SearchAndRescue(gym.Env):
 		self.information = {'total_moves': self.total_moves,
 												'total_senses': self.total_senses,
 												'initial_distance_to_victim': self.initial_distance_to_victim,
-												'distance_to_maximum_belief': self.observation['distance_to_maximum_belief'].item(),
+												'distance_to_maximum_belief': self.distance_to_maximum_belief,
 												'distance_to_maximum_belief_reduction': self.distance_to_maximum_belief_reduction,
 												'initial_belief_shannon_entropy': self.initial_belief_shannon_entropy,
-												'belief_shannon_entropy': self.observation['belief_shannon_entropy'].item(),
+												'belief_shannon_entropy': self.belief_shannon_entropy,
 												'belief_shannon_entropy_reduction': self.belief_shannon_entropy_reduction,
 												'success': success,
 												'failure': failure}

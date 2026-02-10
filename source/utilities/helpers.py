@@ -7,15 +7,8 @@ import shutil
 import subprocess
 import time
 import webbrowser
-import warnings
 
 import pandas as pd
-
-warnings.filterwarnings('ignore',
-                        category = DeprecationWarning)
-warnings.filterwarnings('ignore',
-                        category = UserWarning)
-
 import numpy as np
 
 from sb3_contrib import MaskablePPO
