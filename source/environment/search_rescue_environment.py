@@ -208,6 +208,13 @@ class SearchAndRescue(gym.Env):
 		self.update_local_vision()
 		self.update_environment_knowledge()
 		self.initialize_belief()
+		self.maximum_distance_to_maximum_belief: float = float(2 * (self.environment_size - 1))
+		no_robot_open_cells_count: int = self.open_cells_count - 1
+		uniform_probability: float = 1.0 / no_robot_open_cells_count
+		belief_flattened_indices: np.ndarray = np.full(no_robot_open_cells_count,
+																									 uniform_probability,
+																									 dtype = np.float32)
+		self.maximum_belief_shannon_entropy: float = get_shannon_entropy(belief_flattened_indices = belief_flattened_indices)
 		self.observation = self.get_observation()
 		self.steps = 0
 		self.total_moves = 0
@@ -293,21 +300,13 @@ class SearchAndRescue(gym.Env):
 																														position_2 = maximum_belief_position,
 																														environment_knowledge = self.environment_knowledge)
 		self.distance_to_maximum_belief_reduction = self.distance_to_maximum_belief_before - self.distance_to_maximum_belief
-		maximum_distance_to_maximum_belief: float = float(2 * (self.environment_size - 1))
-		normalized_distance_to_maximum_belief_reduction: float = float(self.distance_to_maximum_belief_reduction) / maximum_distance_to_maximum_belief
+		normalized_distance_to_maximum_belief_reduction: float = float(self.distance_to_maximum_belief_reduction) / self.maximum_distance_to_maximum_belief
 		self.belief_flattened = self.belief.flatten()
 		self.positive_belief_flattened_indices = self.belief_flattened[self.belief_flattened > 0]
 		self.belief_shannon_entropy: float = get_shannon_entropy(belief_flattened_indices = self.positive_belief_flattened_indices)
 		self.belief_shannon_entropy_reduction: float = self.belief_shannon_entropy_before - self.belief_shannon_entropy
-		no_robot_open_cells_count: int = self.open_cells_count - 1
-		uniform_probability: float = 1.0 / no_robot_open_cells_count
-		belief_flattened_indices: np.ndarray = np.full(no_robot_open_cells_count,
-																									 uniform_probability,
-																									 dtype = np.float32)
-		maximum_belief_shannon_entropy: float = get_shannon_entropy(belief_flattened_indices = belief_flattened_indices)
-		normalized_belief_shannon_entropy_reduction: float = self.belief_shannon_entropy_reduction / maximum_belief_shannon_entropy
-		self.observation = self.get_observation(maximum_distance_to_maximum_belief = maximum_distance_to_maximum_belief,
-                                            maximum_belief_shannon_entropy = maximum_belief_shannon_entropy)
+		normalized_belief_shannon_entropy_reduction: float = self.belief_shannon_entropy_reduction / self.maximum_belief_shannon_entropy
+		self.observation = self.get_observation()
 		reward: float = get_reward(configuration = self.reward_configuration,
 															 alpha = self.alpha,
 															 normalized_step = normalized_step,
@@ -382,14 +381,7 @@ class SearchAndRescue(gym.Env):
           		self.robot_position[1]] = 1.0
 
 		return robot_map
-	def get_observation(self,
-											maximum_distance_to_maximum_belief: float = None,
-           						maximum_belief_shannon_entropy: float = None) -> dict:
-		if maximum_distance_to_maximum_belief is None:
-			raise ValueError("Maximum distance to maximum belief not specified.")
-		if maximum_belief_shannon_entropy is None:
-			raise ValueError("Maximum belief shannon entropy not specified.")
-
+	def get_observation(self) -> dict:
 		open_map: np.ndarray = (self.environment_knowledge == 0).astype(np.float32)
 		closed_map: np.ndarray = (self.environment_knowledge == 1).astype(np.float32)
 		unknown_map: np.ndarray = (self.environment_knowledge == -1).astype(np.float32)
@@ -404,11 +396,11 @@ class SearchAndRescue(gym.Env):
 																			 belief_map,
 																			 robot_map],
 																			axis = -1)
-		normalized_distance_to_maximum_belief: float = self.distance_to_maximum_belief / maximum_distance_to_maximum_belief
+		normalized_distance_to_maximum_belief: float = self.distance_to_maximum_belief / self.maximum_distance_to_maximum_belief
 		normalized_distance_to_maximum_belief = np.clip(a = normalized_distance_to_maximum_belief,
 																										a_min = 0.0,
 																										a_max = 1.0)
-		normalized_belief_shannon_entropy: float = self.belief_shannon_entropy / maximum_belief_shannon_entropy
+		normalized_belief_shannon_entropy: float = self.belief_shannon_entropy / self.maximum_belief_shannon_entropy
 		normalized_belief_shannon_entropy = np.clip(a = normalized_belief_shannon_entropy,
 																								a_min = 0.0,
 																								a_max = 1.0)
