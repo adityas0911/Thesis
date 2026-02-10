@@ -147,16 +147,16 @@ class SearchAndRescue(gym.Env):
 																																	 high = 1.0,
 																																	 shape = (self.environment_size,
 																																						self.environment_size,
-																																						3),
+																																						5),
 																																	 dtype = np.float32),
-																					'belief_shannon_entropy': spaces.Box(low = 0.0,
-																																							 high = np.finfo(np.float32).max,
-																																							 shape = (1,),
-																																							 dtype = np.float32),
-																					'distance_to_maximum_belief': spaces.Box(low = 0.0,
-																																									 high = 2 * (self.environment_size - 1),
-																																									 shape = (1,),
-																																									 dtype = np.float32)})
+																					'normalized_belief_shannon_entropy': spaces.Box(low = 0.0,
+																																													high = 1.0,
+																																													shape = (1,),
+																																													dtype = np.float32),
+																					'normalized_distance_to_maximum_belief': spaces.Box(low = 0.0,
+																																															high = 1.0,
+																																															shape = (1,),
+																																															dtype = np.float32)})
 		self.steps: int = -1
 		self.total_moves: int = -1
 		self.total_senses: int = -1
@@ -293,8 +293,8 @@ class SearchAndRescue(gym.Env):
 																														position_2 = maximum_belief_position,
 																														environment_knowledge = self.environment_knowledge)
 		self.distance_to_maximum_belief_reduction = self.distance_to_maximum_belief_before - self.distance_to_maximum_belief
-		maximum_distance_to_maximum_belief: int = 2 * (self.environment_size - 1)
-		normalized_distance_to_maximum_belief_reduction: float = float(self.distance_to_maximum_belief_reduction) / float(maximum_distance_to_maximum_belief)
+		maximum_distance_to_maximum_belief: float = float(2 * (self.environment_size - 1))
+		normalized_distance_to_maximum_belief_reduction: float = float(self.distance_to_maximum_belief_reduction) / maximum_distance_to_maximum_belief
 		self.belief_flattened = self.belief.flatten()
 		self.positive_belief_flattened_indices = self.belief_flattened[self.belief_flattened > 0]
 		self.belief_shannon_entropy: float = get_shannon_entropy(belief_flattened_indices = self.positive_belief_flattened_indices)
@@ -306,7 +306,8 @@ class SearchAndRescue(gym.Env):
 																									 dtype = np.float32)
 		maximum_belief_shannon_entropy: float = get_shannon_entropy(belief_flattened_indices = belief_flattened_indices)
 		normalized_belief_shannon_entropy_reduction: float = self.belief_shannon_entropy_reduction / maximum_belief_shannon_entropy
-		self.observation = self.get_observation()
+		self.observation = self.get_observation(maximum_distance_to_maximum_belief = maximum_distance_to_maximum_belief,
+                                            maximum_belief_shannon_entropy = maximum_belief_shannon_entropy)
 		reward: float = get_reward(configuration = self.reward_configuration,
 															 alpha = self.alpha,
 															 normalized_step = normalized_step,
@@ -381,19 +382,41 @@ class SearchAndRescue(gym.Env):
           		self.robot_position[1]] = 1.0
 
 		return robot_map
-	def get_observation(self) -> dict:
-		environment_map = (self.environment_knowledge == 0).astype(np.float32)
-		belief_map = self.belief.astype(np.float32)
-		robot_map = self.get_robot_map()
-		global_map = np.stack([environment_map,
-													 belief_map,
-                           robot_map],
-													axis = -1)
+	def get_observation(self,
+											maximum_distance_to_maximum_belief: float = None,
+           						maximum_belief_shannon_entropy: float = None) -> dict:
+		if maximum_distance_to_maximum_belief is None:
+			raise ValueError("Maximum distance to maximum belief not specified.")
+		if maximum_belief_shannon_entropy is None:
+			raise ValueError("Maximum belief shannon entropy not specified.")
+
+		open_map: np.ndarray = (self.environment_knowledge == 0).astype(np.float32)
+		closed_map: np.ndarray = (self.environment_knowledge == 1).astype(np.float32)
+		unknown_map: np.ndarray = (self.environment_knowledge == -1).astype(np.float32)
+		belief_map = np.clip(a = self.belief,
+                       	 a_min = 1.0e-6,
+                         a_max = 1.0)
+		belief_map = belief_map / belief_map.sum()
+		robot_map: np.ndarray = self.get_robot_map()
+		global_map: np.ndarray = np.stack([open_map,
+																			 closed_map,
+																			 unknown_map,
+																			 belief_map,
+																			 robot_map],
+																			axis = -1)
+		normalized_distance_to_maximum_belief: float = self.distance_to_maximum_belief / maximum_distance_to_maximum_belief
+		normalized_distance_to_maximum_belief = np.clip(a = normalized_distance_to_maximum_belief,
+																										a_min = 0.0,
+																										a_max = 1.0)
+		normalized_belief_shannon_entropy: float = self.belief_shannon_entropy / maximum_belief_shannon_entropy
+		normalized_belief_shannon_entropy = np.clip(a = normalized_belief_shannon_entropy,
+																								a_min = 0.0,
+																								a_max = 1.0)
 		self.observation = {'global_map': global_map,
-												'belief_shannon_entropy': np.array([self.belief_shannon_entropy],
-																													 dtype = np.float32),
-												'distance_to_maximum_belief': np.array([self.distance_to_maximum_belief],
-																															 dtype = np.float32)}
+												'normalized_belief_shannon_entropy': np.array([normalized_belief_shannon_entropy],
+																																			dtype = np.float32),
+												'normalized_distance_to_maximum_belief': np.array([normalized_distance_to_maximum_belief],
+																															 						dtype = np.float32)}
 
 		return self.observation
 	def get_information(self) -> dict:

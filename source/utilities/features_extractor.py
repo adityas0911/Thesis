@@ -29,7 +29,8 @@ class FeaturesExtractor(BaseFeaturesExtractor):
     if scalar_embedding_dimensions is None:
       raise ValueError("Scalar embedding dimensions not specified.")
 
-    super().__init__(observation_space)
+    super().__init__(observation_space,
+                     features_dim = 1)
 
     global_map_space: spaces.Box = observation_space.spaces['global_map']
     number_channels: int = global_map_space.shape[-1]
@@ -83,8 +84,8 @@ class FeaturesExtractor(BaseFeaturesExtractor):
                                                                   1,
                                                                   2)
     spatial_latent: torch.Tensor = self.cnn_head(self.cnn(global_map))
-    scalars = torch.cat([observations['belief_shannon_entropy'],
-                         observations['distance_to_maximum_belief']],
+    scalars = torch.cat([observations['normalized_belief_shannon_entropy'],
+                         observations['normalized_distance_to_maximum_belief']],
                         dim = 1)
     scalar_latent = self.scalar_multilayer_perceptron(scalars)
     output: torch.Tensor = torch.cat([spatial_latent,
