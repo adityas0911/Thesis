@@ -24,9 +24,9 @@ train:
          64]
   start_learning_rate: 3.0e-4
   end_learning_rate: 1.0e-4
-  number_steps: 1500
-  batch_size: 500
-  number_epochs: 10
+  number_steps: 1024
+  batch_size: 512
+  number_epochs: 8
   generalized_advantage_estimation_lambda: 0.97
   clip_range: 0.2
   normalize_advantage: true
@@ -36,7 +36,7 @@ train:
   verbose: 1
   stats_window_size: 100
   _init_setup_model: true
-  total_timesteps: 9_000_000
+  total_timesteps: 10_000_000
   checkpoint_frequency: 100_000
 environment:
   seed: null
@@ -46,8 +46,8 @@ environment:
   maximum_steps: 400
 reward:
   step_weight: 1
-  distance_reduction_weight: 9
-  entropy_reduction_weight: 3
+  distance_reduction_weight: 27
+  entropy_reduction_weight: 9
   terminated_weight: 270
   truncated_weight: 270
 visualization:
@@ -60,7 +60,7 @@ visualization:
   render: true
 load_maskableppo:
   normalize_observations: false
-  normalize_rewards: false
+  normalize_rewards: true
 evaluation:
   training_episode_percentage: 0.2
   random: true

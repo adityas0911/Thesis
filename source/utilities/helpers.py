@@ -28,9 +28,9 @@ def detect_optimal_resources(number_parallel: int = None) -> dict:
 	 cpu_logical) = detect_cpu_cores()
 	gpu_available: bool = torch.cuda.is_available()
 	device: str = 'cuda' if gpu_available else 'cpu'
-	maximum_workers: int = 1 if gpu_available else min(cpu_physical // 2,
-																										 number_parallel)
-	number_environments: int = cpu_logical // maximum_workers - 2
+	maximum_workers: int = min(cpu_physical // 2,
+														 number_parallel)
+	number_environments: int = cpu_logical // maximum_workers
 	resources: dict = {'cpu_physical': cpu_physical,
 										 'cpu_logical': cpu_logical,
 										 'gpu_available': gpu_available,

@@ -41,7 +41,9 @@ class FeaturesExtractor(BaseFeaturesExtractor):
 
     for (channel,
          kernel_size,
-         stride) in zip(cnn_channels, cnn_kernel_sizes, cnn_strides):
+         stride) in zip(cnn_channels,
+                        cnn_kernel_sizes,
+                        cnn_strides):
       padding: int = kernel_size // 2
 
       layers.append(nn.Conv2d(previous,
