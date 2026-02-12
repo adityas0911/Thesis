@@ -42,8 +42,6 @@ from source.updates.sensor import get_beep
 from source.updates.reward import get_reward
 from source.utilities.helpers import (load_configuration,
 																			get_cells,
-																			get_shannon_entropy,
-																			get_shortest_distance,
                    										delete_pycache)
 from source.updates.belief import (normalize_belief,
 																	 update_sense,
@@ -103,7 +101,6 @@ class SearchAndRescue(gym.Env):
 		visualization_configuration: dict = configuration['visualization']
 		self.reward_configuration: dict = configuration['reward']
 		self.seeded: bool = environment_configuration['seed'] is not None
-		self.sensor_alpha: float = environment_configuration['sensor_alpha']
 		self.environment_size: int = environment_configuration['environment_size']
 		self.vision_range: int = environment_configuration['vision_range']
 		self.maximum_steps: int = environment_configuration['maximum_steps']
@@ -143,27 +140,13 @@ class SearchAndRescue(gym.Env):
 																																						self.environment_size,
 																																						5),
 																																	 dtype = np.float32),
-																					'normalized_belief_shannon_entropy': spaces.Box(low = 0.0,
-																																													high = 1.0,
-																																													shape = (1,),
-																																													dtype = np.float32),
-																					'normalized_distance_to_maximum_belief': spaces.Box(low = 0.0,
-																																															high = 1.0,
-																																															shape = (1,),
-																																															dtype = np.float32)})
+                                        	'alpha': spaces.Box(low = 0.0,
+																															high = 1.0,
+																															shape = (1,),
+																															dtype = np.float32)})
 		self.steps: int = -1
 		self.total_moves: int = -1
 		self.total_senses: int = -1
-		self.initial_distance_to_victim: int = -1
-		self.distance_to_maximum_belief_before: int = -1
-		self.distance_to_maximum_belief: int = -1
-		self.distance_to_maximum_belief_reduction: int = -1
-		self.belief_flattened: np.ndarray = np.array([])
-		self.positive_belief_flattened_indices: np.ndarray = np.array([])
-		self.initial_belief_shannon_entropy: float = -1.0
-		self.belief_shannon_entropy_before: float = -1.0
-		self.belief_shannon_entropy: float = -1.0
-		self.belief_shannon_entropy_reduction: float = -1.0
 		self.terminated: bool = False
 		self.truncated: bool = False
 		self.information: dict = {}
@@ -181,11 +164,6 @@ class SearchAndRescue(gym.Env):
             **kwargs) -> tuple:
 		super().reset(seed = seed)
 
-		if self.sensor_alpha is None:
-			print("Sensor alpha value not specified. Using default: random sensor alpha")
-
-			self.sensor_alpha = float(self.np_random.random())
-
 		self.environment = generate_environment(environment_size = self.environment_size,
 																						seed = self.np_random)
 		self.open_cells: list = get_cells(environment = self.environment,
@@ -202,29 +180,10 @@ class SearchAndRescue(gym.Env):
 		self.update_local_vision()
 		self.update_environment_knowledge()
 		self.initialize_belief()
-		self.maximum_distance_to_maximum_belief: float = float(2 * (self.environment_size - 1))
-		no_robot_open_cells_count: int = self.open_cells_count - 1
-		uniform_probability: float = 1.0 / no_robot_open_cells_count
-		belief_flattened_indices: np.ndarray = np.full(no_robot_open_cells_count,
-																									 uniform_probability,
-																									 dtype = np.float32)
-		self.maximum_belief_shannon_entropy: float = get_shannon_entropy(belief_flattened_indices = belief_flattened_indices)
 		self.observation = self.get_observation()
 		self.steps = 0
 		self.total_moves = 0
 		self.total_senses = 0
-		self.initial_distance_to_victim = get_shortest_distance(position_1 = self.robot_position,
-																														position_2 = self.victim_position,
-																														environment_knowledge = self.environment_knowledge)
-		self.distance_to_maximum_belief_before = self.initial_distance_to_victim
-		self.distance_to_maximum_belief = self.distance_to_maximum_belief_before
-		self.distance_to_maximum_belief_reduction = self.distance_to_maximum_belief_before - self.distance_to_maximum_belief
-		self.belief_flattened = self.belief.flatten()
-		self.positive_belief_flattened_indices = self.belief_flattened[self.belief_flattened > 0]
-		self.initial_belief_shannon_entropy = get_shannon_entropy(belief_flattened_indices = self.positive_belief_flattened_indices)
-		self.belief_shannon_entropy_before = self.initial_belief_shannon_entropy
-		self.belief_shannon_entropy = self.belief_shannon_entropy_before
-		self.belief_shannon_entropy_reduction = self.belief_shannon_entropy_before - self.belief_shannon_entropy
 		self.terminated = False
 		self.truncated = False
 		self.information = self.get_information()
@@ -238,27 +197,14 @@ class SearchAndRescue(gym.Env):
 			raise ValueError("Action not specified.")
 
 		self.steps += 1
-		maximum_belief_index = self.belief.argmax()
-		maximum_belief_position = np.unravel_index(maximum_belief_index,
-																							 self.belief.shape)
-
-		if self.steps == 1:
-			self.distance_to_maximum_belief_before = self.initial_distance_to_victim
-		else:
-			self.distance_to_maximum_belief_before = get_shortest_distance(position_1 = self.robot_position,
-																																		 position_2 = maximum_belief_position,
-																																		 environment_knowledge = self.environment_knowledge)
-		self.belief_flattened = self.belief.flatten()
-		self.positive_belief_flattened_indices = self.belief_flattened[self.belief_flattened > 0]
-		self.belief_shannon_entropy_before: float = get_shannon_entropy(belief_flattened_indices = self.positive_belief_flattened_indices)
 
 		if action == self.ACTION_SENSE:
 			self.total_senses += 1
-			beep: int = get_beep(sensor_alpha = self.sensor_alpha,
+			beep: int = get_beep(alpha = self.alpha,
 													 robot_position = self.robot_position,
 													 victim_position = self.victim_position,
 													 seed = self.np_random if self.seeded else None)
-			self.belief = update_sense(sensor_alpha = self.sensor_alpha,
+			self.belief = update_sense(alpha = self.alpha,
 																 robot_position = self.robot_position,
 																 belief = self.belief,
 																 beep = beep)
@@ -290,22 +236,10 @@ class SearchAndRescue(gym.Env):
 			self.truncated = True
 
 		normalized_step: float = 1.0 / float(self.maximum_steps)
-		self.distance_to_maximum_belief = get_shortest_distance(position_1 = self.robot_position,
-																														position_2 = maximum_belief_position,
-																														environment_knowledge = self.environment_knowledge)
-		self.distance_to_maximum_belief_reduction = self.distance_to_maximum_belief_before - self.distance_to_maximum_belief
-		normalized_distance_to_maximum_belief_reduction: float = float(self.distance_to_maximum_belief_reduction) / self.maximum_distance_to_maximum_belief
-		self.belief_flattened = self.belief.flatten()
-		self.positive_belief_flattened_indices = self.belief_flattened[self.belief_flattened > 0]
-		self.belief_shannon_entropy: float = get_shannon_entropy(belief_flattened_indices = self.positive_belief_flattened_indices)
-		self.belief_shannon_entropy_reduction: float = self.belief_shannon_entropy_before - self.belief_shannon_entropy
-		normalized_belief_shannon_entropy_reduction: float = self.belief_shannon_entropy_reduction / self.maximum_belief_shannon_entropy
 		self.observation = self.get_observation()
 		reward: float = get_reward(configuration = self.reward_configuration,
 															 alpha = self.alpha,
 															 normalized_step = normalized_step,
-															 normalized_distance_to_maximum_belief_reduction = normalized_distance_to_maximum_belief_reduction,
-															 normalized_belief_shannon_entropy_reduction = normalized_belief_shannon_entropy_reduction,
 															 terminated = self.terminated,
 															 truncated = self.truncated)
 		self.information = self.get_information()
@@ -390,19 +324,9 @@ class SearchAndRescue(gym.Env):
 																			 belief_map,
 																			 robot_map],
 																			axis = -1)
-		normalized_distance_to_maximum_belief: float = self.distance_to_maximum_belief / self.maximum_distance_to_maximum_belief
-		normalized_distance_to_maximum_belief = np.clip(a = normalized_distance_to_maximum_belief,
-																										a_min = 0.0,
-																										a_max = 1.0)
-		normalized_belief_shannon_entropy: float = self.belief_shannon_entropy / self.maximum_belief_shannon_entropy
-		normalized_belief_shannon_entropy = np.clip(a = normalized_belief_shannon_entropy,
-																								a_min = 0.0,
-																								a_max = 1.0)
 		self.observation = {'global_map': global_map,
-												'normalized_belief_shannon_entropy': np.array([normalized_belief_shannon_entropy],
-																																			dtype = np.float32),
-												'normalized_distance_to_maximum_belief': np.array([normalized_distance_to_maximum_belief],
-																															 						dtype = np.float32)}
+												'alpha': np.array([self.alpha],
+                                          dtype = np.float32)}
 
 		return self.observation
 	def get_information(self) -> dict:
@@ -416,14 +340,9 @@ class SearchAndRescue(gym.Env):
 			success: int = 0
 			failure: int = 0
 
-		self.information = {'total_moves': self.total_moves,
+		self.information = {'alpha': self.alpha,
+    										'total_moves': self.total_moves,
 												'total_senses': self.total_senses,
-												'initial_distance_to_victim': self.initial_distance_to_victim,
-												'distance_to_maximum_belief': self.distance_to_maximum_belief,
-												'distance_to_maximum_belief_reduction': self.distance_to_maximum_belief_reduction,
-												'initial_belief_shannon_entropy': self.initial_belief_shannon_entropy,
-												'belief_shannon_entropy': self.belief_shannon_entropy,
-												'belief_shannon_entropy_reduction': self.belief_shannon_entropy_reduction,
 												'success': success,
 												'failure': failure}
 

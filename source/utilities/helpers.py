@@ -97,13 +97,6 @@ def get_cells(environment: np.ndarray = None,
 											column))
 
 	return cells
-def get_shannon_entropy(belief_flattened_indices: np.ndarray = None) -> float:
-	if belief_flattened_indices is None:
-		raise ValueError("Belief flattened indices not specified.")
-
-	shannon_entropy: float = -np.sum(belief_flattened_indices * np.log2(belief_flattened_indices))
-
-	return shannon_entropy
 def get_manhattan_distance(position_1: tuple = None,
 													 position_2: tuple = None) -> int:
 	if position_1 is None:
@@ -114,76 +107,6 @@ def get_manhattan_distance(position_1: tuple = None,
 	manhattan_distance: int = abs(position_1[0] - position_2[0]) + abs(position_1[1] - position_2[1])
 
 	return manhattan_distance
-def get_shortest_distance(position_1: tuple = None,
-													position_2: tuple = None,
-													environment_knowledge: np.ndarray = None) -> int:
-	if position_1 is None:
-		raise ValueError("Position 1 not specified.")
-	if position_2 is None:
-		raise ValueError("Position 2 not specified.")
-	if environment_knowledge is None:
-		raise ValueError("Environment knowledge not specified.")
-
-	directions: list = [(-1,
-                       0),
-                      (1,
-                       0),
-                      (0,
-                       -1),
-                      (0,
-                       1)]
-	unknown_cells_knowledge: list = get_cells(environment = environment_knowledge,
-																						type = 'unknown')
-	closed_cells_knowledge: list = get_cells(environment = environment_knowledge,
-	                                         type = 'closed')
-	queue: list = [(0,
-	                position_1)]
-	visited: dict = {position_1: 0}
-	shortest_path: int = 2 * environment_knowledge.shape[0]
-
-	while queue:
-		(distance,
-	   (row,
-	    column)) = heapq.heappop(queue)
-
-		if distance > visited[(row,
-	                          column)]:
-			continue
-		if (row,
-	      column) == position_2:
-			return distance
-		for (delta_row,
-	       delta_column) in directions:
-			new_row: int = row + delta_row
-			new_column: int = column + delta_column
-			new_distance: int = distance + 1
-
-			if not (0 <= new_row < environment_knowledge.shape[0] and 0 <= new_column < environment_knowledge.shape[1]):
-				continue
-			if (new_row,
-	        new_column) in closed_cells_knowledge:
-				continue
-			if (new_row,
-	        new_column) in visited and new_distance >= visited[(new_row,
-	                                                            new_column)]:
-				continue
-			if (new_row,
-	        new_column) in unknown_cells_knowledge:
-				estimate: int = new_distance + get_manhattan_distance((new_row,
-																															 new_column),
-																															position_2)
-				shortest_path = min(shortest_path,
-	                          estimate)
-
-			visited[(new_row,
-	             new_column)] = new_distance
-
-			heapq.heappush(queue,
-	                   (new_distance,
-	                    (new_row,
-	                     new_column)))
-
-	return shortest_path
 def harmonize_rollout_hyperparameters(batch_size: int = None,
 																			number_steps: int = None,
 																			number_environments: int = None,

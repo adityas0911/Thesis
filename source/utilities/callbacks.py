@@ -60,19 +60,14 @@ class TensorboardCallback(BaseCallback):
 
 				length: int = episode.get('l')
 				reward: float = episode.get('r')
+				alpha: float = information.get('alpha')
 				total_moves: int = information.get('total_moves')
 				total_senses: int = information.get('total_senses')
-				initial_distance_to_victim: float = information.get('initial_distance_to_victim')
-				distance_to_maximum_belief: float = information.get('distance_to_maximum_belief')
-				initial_belief_shannon_entropy: float = information.get('initial_belief_shannon_entropy')
-				belief_shannon_entropy: float = information.get('belief_shannon_entropy')
 				success: int = information.get('success')
 				failure: int = information.get('failure')
 				self.episode_count += 1
 				self.total_timesteps += length
 				total_actions: int = total_moves + total_senses
-				distance_to_maximum_belief_reduction: float = initial_distance_to_victim - distance_to_maximum_belief
-				belief_shannon_entropy_reduction: float = initial_belief_shannon_entropy - belief_shannon_entropy
 				move_ratio: float = float(total_moves) / float(total_actions)
 				sense_ratio: float = float(total_senses) / float(total_actions)
 				success_rate: float = float(self.success_count) / float(self.episode_count) * 100.0
@@ -86,22 +81,12 @@ class TensorboardCallback(BaseCallback):
                        		 length)
 				self.logger.record('episode/reward',
                        		 reward)
+				self.logger.record('custom/alpha',
+											 		 alpha)
 				self.logger.record('custom/total_moves',
                        		 total_moves)
 				self.logger.record('custom/total_senses',
                        		 total_senses)
-				self.logger.record('custom/initial_distance_to_victim',
-                       		 initial_distance_to_victim)
-				self.logger.record('custom/distance_to_maximum_belief',
-                       		 distance_to_maximum_belief)
-				self.logger.record('custom/distance_to_maximum_belief_reduction',
-                       		 distance_to_maximum_belief_reduction)
-				self.logger.record('custom/initial_belief_shannon_entropy',
-                       		 initial_belief_shannon_entropy)
-				self.logger.record('custom/belief_shannon_entropy',
-                       		 belief_shannon_entropy)
-				self.logger.record('custom/belief_shannon_entropy_reduction',
-                       		 belief_shannon_entropy_reduction)
 				self.logger.record('custom/success',
                        		 success)
 				self.logger.record('custom/failure',
@@ -160,16 +145,11 @@ class EpisodeCallback(BaseCallback):
 												 "total_timesteps",
 												 "length",
 												 "reward",
+												 "alpha",
 												 "total_moves",
 												 "move_ratio",
 												 "total_senses",
 												 "sense_ratio",
-												 "initial_distance_to_victim",
-												 "distance_to_maximum_belief",
-												 "distance_to_maximum_belief_reduction",
-												 "initial_belief_shannon_entropy",
-												 "belief_shannon_entropy",
-												 "belief_shannon_entropy_reduction",
 												 "success",
 												 "success_rate",
 												 "failure",
@@ -185,12 +165,9 @@ class EpisodeCallback(BaseCallback):
 
 		length: int = data.get('length')
 		reward: float = data.get('reward')
+		alpha: float = data.get('alpha')
 		total_moves: int = data.get('total_moves')
 		total_senses: int = data.get('total_senses')
-		initial_distance_to_victim: float = data.get('initial_distance_to_victim')
-		distance_to_maximum_belief: float = data.get('distance_to_maximum_belief')
-		initial_belief_shannon_entropy: float = data.get('initial_belief_shannon_entropy')
-		belief_shannon_entropy: float = data.get('belief_shannon_entropy')
 		success: int = data.get('success')
 		failure: int = data.get('failure')
 
@@ -204,8 +181,6 @@ class EpisodeCallback(BaseCallback):
 		self.episode_count += 1
 		self.total_timesteps += length
 		total_actions: int = total_moves + total_senses
-		distance_to_maximum_belief_reduction: float = initial_distance_to_victim - distance_to_maximum_belief
-		belief_shannon_entropy_reduction: float = initial_belief_shannon_entropy - belief_shannon_entropy
 		move_ratio: float = float(total_moves) / float(total_actions)
 		sense_ratio: float = float(total_senses) / float(total_actions)
 		success_rate: float = float(self.success_count) / float(self.episode_count)
@@ -214,16 +189,11 @@ class EpisodeCallback(BaseCallback):
 								 self.total_timesteps,
 								 length,
 								 reward,
+								 alpha,
 								 total_moves,
 								 move_ratio,
 								 total_senses,
 								 sense_ratio,
-								 initial_distance_to_victim,
-								 distance_to_maximum_belief,
-								 distance_to_maximum_belief_reduction,
-								 initial_belief_shannon_entropy,
-								 belief_shannon_entropy,
-								 belief_shannon_entropy_reduction,
 								 success,
 								 success_rate,
 								 failure,
@@ -245,22 +215,16 @@ class EpisodeCallback(BaseCallback):
 		episode: dict = information.get('episode')
 		length: int = episode.get('l')
 		reward: float = episode.get('r')
+		alpha: float = information.get('alpha')
 		total_moves: int = information.get('total_moves')
 		total_senses: int = information.get('total_senses')
-		initial_distance_to_victim: float = information.get('initial_distance_to_victim')
-		distance_to_maximum_belief: float = information.get('distance_to_maximum_belief')
-		initial_belief_shannon_entropy: float = information.get('initial_belief_shannon_entropy')
-		belief_shannon_entropy: float = information.get('belief_shannon_entropy')
 		success: int = information.get('success')
 		failure: int = information.get('failure')
 		data: dict = {'length': length,
 									'reward': reward,
+									'alpha': alpha,
 									'total_moves': total_moves,
 									'total_senses': total_senses,
-									'initial_distance_to_victim': initial_distance_to_victim,
-									'distance_to_maximum_belief': distance_to_maximum_belief,
-									'initial_belief_shannon_entropy': initial_belief_shannon_entropy,
-									'belief_shannon_entropy': belief_shannon_entropy,
 									'success': success,
 									'failure': failure}
 
@@ -317,28 +281,22 @@ class StepCallback(BaseCallback):
 		self.step_count += 1
 		action: int = data.get('action')
 		reward: float = data.get('reward')
+		alpha: float = data.get('alpha')
 		total_moves: int = data.get('total_moves')
 		total_senses: int = data.get('total_senses')
 		total_actions: float = total_moves + total_senses
 		move_ratio: float = float(total_moves) / float(total_actions)
 		sense_ratio: float = float(total_senses) / float(total_actions)
-		distance_to_maximum_belief: float = data.get('distance_to_maximum_belief')
-		distance_to_maximum_belief_reduction: float = data.get('distance_to_maximum_belief_reduction')
-		belief_shannon_entropy: float = data.get('belief_shannon_entropy')
-		belief_shannon_entropy_reduction: float = data.get('belief_shannon_entropy_reduction')
 		success: int = data.get('success')
 		failure: int = data.get('failure')
 		row: list = [self.step_count,
 								 action,
 								 reward,
+								 alpha,
 								 total_moves,
 								 move_ratio,
 								 total_senses,
 								 sense_ratio,
-								 distance_to_maximum_belief,
-								 distance_to_maximum_belief_reduction,
-								 belief_shannon_entropy,
-								 belief_shannon_entropy_reduction,
 								 success,
 								 failure]
 
@@ -360,14 +318,11 @@ class StepCallback(BaseCallback):
 			writer.writerow(["step",
 											 "action",
 											 "reward",
+											 "alpha",
 											 "total_moves",
 											 "move_ratio",
 											 "total_senses",
 											 "sense_ratio",
-											 "distance_to_maximum_belief",
-											 "distance_to_maximum_belief_reduction",
-											 "belief_shannon_entropy",
-											 "belief_shannon_entropy_reduction",
 											 "success",
 											 "failure"])
 			writer.writerows(self.episode_steps)
@@ -382,22 +337,16 @@ class StepCallback(BaseCallback):
 		action: float = actions[0]
 		reward: float = rewards[0]
 		episode: dict = information.get('episode')
+		alpha: float = information.get('alpha')
 		total_moves: int = information.get('total_moves')
 		total_senses: int = information.get('total_senses')
-		distance_to_maximum_belief: float = information.get('distance_to_maximum_belief')
-		distance_to_maximum_belief_reduction: float = information.get('distance_to_maximum_belief_reduction')
-		belief_shannon_entropy: float = information.get('belief_shannon_entropy')
-		belief_shannon_entropy_reduction: float = information.get('belief_shannon_entropy_reduction')
 		success: int = information.get('success')
 		failure: int = information.get('failure')
 		data: dict = {'action': action,
 									'reward': reward,
+									'alpha': alpha,
 									'total_moves': total_moves,
 									'total_senses': total_senses,
-									'distance_to_maximum_belief': distance_to_maximum_belief,
-									'distance_to_maximum_belief_reduction': distance_to_maximum_belief_reduction,
-									'belief_shannon_entropy': belief_shannon_entropy,
-									'belief_shannon_entropy_reduction': belief_shannon_entropy_reduction,
 									'success': success,
 									'failure': failure}
 

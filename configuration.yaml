@@ -26,7 +26,7 @@ train:
   end_learning_rate: 1.0e-4
   number_steps: 1024
   batch_size: 512
-  number_epochs: 8
+  number_epochs: 10
   generalized_advantage_estimation_lambda: 0.97
   clip_range: 0.2
   normalize_advantage: true
@@ -40,16 +40,13 @@ train:
   checkpoint_frequency: 100_000
 environment:
   seed: null
-  sensor_alpha: 0.3
   environment_size: 20
-  vision_range: 2
+  vision_range: 1
   maximum_steps: 400
 reward:
   step_weight: 1
-  distance_reduction_weight: 27
-  entropy_reduction_weight: 9
-  terminated_weight: 270
-  truncated_weight: 270
+  terminated_weight: 1
+  truncated_weight: 1
 visualization:
   frames_per_second: 20
   render_mode: 'human'

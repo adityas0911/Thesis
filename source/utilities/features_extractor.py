@@ -33,6 +33,7 @@ class FeaturesExtractor(BaseFeaturesExtractor):
                      features_dim = 1)
 
     global_map_space: spaces.Box = observation_space.spaces['global_map']
+    alpha_space: spaces.Box = observation_space.spaces['alpha'].shape[0]
     number_channels: int = global_map_space.shape[-1]
     (height,
      width) = global_map_space.shape[0:2]
@@ -69,7 +70,7 @@ class FeaturesExtractor(BaseFeaturesExtractor):
                                   nn.Linear(cnn_output_dimensions,
                                             cnn_embedding_dimensions),
                                   nn.ReLU())
-    self.scalar_multilayer_perceptron = nn.Sequential(nn.Linear(2,
+    self.scalar_multilayer_perceptron = nn.Sequential(nn.Linear(alpha_space,
                                                                 scalar_hidden_sizes[0]),
                                                       nn.ReLU(),
                                                       nn.Linear(scalar_hidden_sizes[0],
@@ -86,10 +87,8 @@ class FeaturesExtractor(BaseFeaturesExtractor):
                                                                   1,
                                                                   2)
     spatial_latent: torch.Tensor = self.cnn_head(self.cnn(global_map))
-    scalars = torch.cat([observations['normalized_belief_shannon_entropy'],
-                         observations['normalized_distance_to_maximum_belief']],
-                        dim = 1)
-    scalar_latent = self.scalar_multilayer_perceptron(scalars)
+    scalar = observations['alpha']
+    scalar_latent = self.scalar_multilayer_perceptron(scalar)
     output: torch.Tensor = torch.cat([spatial_latent,
                                       scalar_latent],
                                      dim = 1)

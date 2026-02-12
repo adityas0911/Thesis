@@ -25,12 +25,12 @@ def normalize_belief(belief: np.ndarray = None) -> np.ndarray:
 		raise ValueError("Cannot normalize belief distribution with zero total probability")
 
 	return belief
-def update_sense(sensor_alpha: float = None,
+def update_sense(alpha: float = None,
                  robot_position: tuple = None,
 								 belief: np.ndarray = None,
                  beep: bool = None) -> np.ndarray:
-	if sensor_alpha is None:
-		raise ValueError("Sensor alpha not specified.")
+	if alpha is None:
+		raise ValueError("Alpha not specified.")
 	if robot_position is None:
 		raise ValueError("Robot position not specified.")
 	if belief is None:
@@ -42,7 +42,7 @@ def update_sense(sensor_alpha: float = None,
 		for column in range(belief.shape[1]):
 			if belief[row,
 								column] > 0:
-				beep_probability: float = get_beep_probability(sensor_alpha = sensor_alpha,
+				beep_probability: float = get_beep_probability(alpha = alpha,
                                                        position_1 = robot_position,
 																											 position_2 = (row,
 																												  					 column))
