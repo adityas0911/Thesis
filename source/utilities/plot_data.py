@@ -41,30 +41,10 @@ def get_cumulative_rewards(episode_data: pd.DataFrame = None) -> list[float]:
 		cumulative_rewards.append(total_reward)
 
 	return cumulative_rewards
-def get_cumulative_values(episode_data: pd.DataFrame = None,
-													metric_values: str = None,
-													reduction_values: str = None) -> list[float]:
-	if episode_data is None:
-		raise ValueError("Episode data not specified.")
-	if metric_values is None:
-		raise ValueError("Metric values not specified.")
-	if reduction_values is None:
-		raise ValueError("Reduction values not specified.")
-
-	starting_value: float = episode_data[metric_values].iloc[0]
-	cumulative_values: list[float] = [starting_value]
-
-	for index in range(1,
-                     len(episode_data)):
-		next_value: float = cumulative_values[-1] - episode_data[reduction_values].iloc[index]
-
-		cumulative_values.append(next_value)
-
-	return cumulative_values
 def plot_episode(episode_data: pd.DataFrame = None,
-								 episode_title: str = None,
-								 alpha: float = None,
-								 episode_plot_path: str = None) -> None:
+                 episode_title: str = None,
+                 alpha: float = None,
+                 episode_plot_path: str = None) -> None:
 	if episode_data is None:
 		raise ValueError("Episode data not specified.")
 	if episode_title is None:
@@ -76,123 +56,61 @@ def plot_episode(episode_data: pd.DataFrame = None,
 
 	(_,
    axes) = plt.subplots(2,
-                        2,
-                        figsize = (16,
-                                   12))
+                        1,
+                        figsize = (12,
+                                   10))
+
 	step: pd.Series = episode_data['step']
 	cumulative_rewards: list[float] = get_cumulative_rewards(episode_data = episode_data)
 	move_ratio: pd.Series = episode_data['move_ratio']
 	sense_ratio: pd.Series = episode_data['sense_ratio']
-	cumulative_distances: list[float] = get_cumulative_values(episode_data = episode_data,
-																														metric_values = 'distance_to_maximum_belief',
-																														reduction_values = 'distance_to_maximum_belief_reduction')
-	cumulative_entropies: list[float] = get_cumulative_values(episode_data = episode_data,
-																														metric_values = 'belief_shannon_entropy',
-																														reduction_values = 'belief_shannon_entropy_reduction')
-
-	axes[0,
-       0].plot(step,
-               cumulative_rewards,
+	axes[0].plot(step,
+							 cumulative_rewards,
 							 linewidth = 2,
-               color = 'blue',
-               marker = 'o',
-               markersize = 4)
-	axes[0,
-       0].set_title(f'Cumulative Reward over Step (alpha = {alpha:.2f}, {episode_title})',
+							 color = 'blue',
+							 marker = 'o',
+							 markersize = 4)
+	axes[0].set_title(f'Cumulative Reward over Step (alpha = {alpha:.2f}, {episode_title})',
 										fontsize = 13,
-                    fontweight = 'bold')
-	axes[0,
-       0].set_xlabel('Step',
+										fontweight = 'bold')
+	axes[0].set_xlabel('Step',
                      fontsize = 11)
-	axes[0,
-       0].set_ylabel('Cumulative Reward',
+	axes[0].set_ylabel('Cumulative Reward',
                      fontsize = 11)
-	axes[0,
-       0].grid(True,
+	axes[0].grid(True,
                linestyle = '--',
                alpha = 0.6)
-	axes[0,
-       1].plot(step,
-               move_ratio,
+	axes[1].plot(step,
+							 move_ratio,
 							 label = 'Move',
-               linewidth = 2,
-               color = 'skyblue',
-               marker = 's',
-               markersize = 4)
-	axes[0,
-       1].plot(step,
-               sense_ratio,
-							 label = 'Sense',
+							 linewidth = 2,
+							 color = 'skyblue',
+							 marker = 's',
+							 markersize = 4)
+	axes[1].plot(step,
+							 sense_ratio,
+					  	 label = 'Sense',
 							 linewidth = 2,
 							 color = 'orange',
 							 marker = 'D',
 							 markersize = 4)
-	axes[0,
-       1].set_title(f'Move and Sense Ratio over Step (alpha = {alpha:.2f}, {episode_title})',
-										fontsize = 13,
-                    fontweight = 'bold')
-	axes[0,
-       1].set_xlabel('Step',
-                     fontsize = 11)
-	axes[0,
-       1].set_ylabel('Ratio',
-                     fontsize = 11)
-	axes[0,
-       1].grid(True,
-               linestyle = '--',
-               alpha = 0.6)
-	axes[0,
-       1].set_ylim([0, 
-                    1.05])
-	axes[0,
-       1].legend(fontsize = 11)
-	axes[1,
-       0].plot(step,
-							 cumulative_distances,
-							 linewidth = 2,
-							 color = 'red',
-							 marker = 'o',
-							 markersize = 4)
-	axes[1,
-       0].set_title(f'Distance to Maximum Belief over Step (alpha = {alpha:.2f}, {episode_title})',
+	axes[1].set_title(f'Move and Sense Ratio over Step (alpha = {alpha:.2f}, {episode_title})',
 										fontsize = 13,
 										fontweight = 'bold')
-	axes[1,
-       0].set_xlabel('Step',
+	axes[1].set_xlabel('Step',
                      fontsize = 11)
-	axes[1,
-       0].set_ylabel('Distance to Maximum Belief',
+	axes[1].set_ylabel('Ratio',
                      fontsize = 11)
-	axes[1,
-       0].grid(True,
+	axes[1].set_ylim([0,
+                    1.05])
+	axes[1].grid(True,
                linestyle = '--',
                alpha = 0.6)
-	axes[1,
-       1].plot(step,
-               cumulative_entropies,
-							 linewidth = 2,
-               color = 'purple',
-               marker = 'o',
-               markersize = 4)
-	axes[1,
-       1].set_title(f'Belief Shannon Entropy over Step (alpha = {alpha:.2f}, {episode_title})',
-										fontsize = 13,
-                    fontweight = 'bold')
-	axes[1,
-       1].set_xlabel('Step',
-                     fontsize = 11)
-	axes[1,
-       1].set_ylabel('Belief Shannon Entropy',
-                     fontsize = 11)
-	axes[1,
-       1].grid(True,
-               linestyle = '--',
-               alpha = 0.6)
-
+	axes[1].legend(fontsize = 11)
 	plt.tight_layout()
 	plt.savefig(episode_plot_path,
-              dpi = 300,
-              bbox_inches = 'tight')
+							dpi = 300,
+							bbox_inches = 'tight')
 	plt.close()
 def plot_alpha_episodes(alpha_data_directory: str = None,
 												alpha_plots_directory: str = None,
