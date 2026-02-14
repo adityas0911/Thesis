@@ -1,7 +1,6 @@
 import psutil
 import torch
 import yaml
-import heapq
 import os
 import shutil
 import subprocess
@@ -196,8 +195,8 @@ def get_checkpoint(checkpoint_directory: str = None) -> tuple[str,
 def cleanup_checkpoints(checkpoint_directory: str = None) -> None:
 	if checkpoint_directory is None:
 		raise ValueError("Checkpoint directory not specified.")
-	
-	checkpoint_files: list = [file for file in os.listdir(checkpoint_directory) if file.endswith('.zip') and file.startswith('2025') and len(file) > 19]
+
+	checkpoint_files: list = [file for file in os.listdir(checkpoint_directory) if file.endswith('.zip') and len(file) > 19 and file[0].isdigit()]
 
 	if len(checkpoint_files) <= 1:
 		return

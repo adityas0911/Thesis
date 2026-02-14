@@ -48,7 +48,7 @@ reward:
   terminated_weight: 1
   truncated_weight: 1
 visualization:
-  frames_per_second: 20
+  frames_per_second: 60
   render_mode: 'human'
   show_heatmap: true
   show_victim: true

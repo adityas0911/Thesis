@@ -22,9 +22,7 @@ from source.updates.belief import (normalize_belief,
                                    update_found_victim,
                                    update_victim_move)
 from source.utilities.helpers import (load_configuration,
-																			get_cells,
-                                      get_shannon_entropy,
-                                      get_shortest_distance)
+																			get_cells)
 
 ACTION_SENSE: int = 0
 ACTION_UP: int = 1
